@@ -1,0 +1,48 @@
+{% extends "core/base.html" %}
+
+{% block title %}Shared Item · FileServer{% endblock %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-8">
+    <div class="card-surface p-5">
+      <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+          <h1 class="h4 mb-1">Shared {{ 'folder' if is_dir else 'file' }}</h1>
+          <p class="text-muted mb-0">Created by {{ link.user.username }} · Expires {{ link.expires_at|date:"Y-m-d H:i" }} UTC</p>
+        </div>
+        <span class="badge-share">{{ token }}</span>
+      </div>
+      <div class="d-flex gap-2 mb-4">
+        <a href="{{ download_url }}" class="btn btn-accent">Download{% if is_dir %} (.tar.gz){% endif %}</a>
+        {% if is_dir %}
+          <a href="{{ zip_url }}" class="btn btn-outline-secondary">Download (.zip)</a>
+        {% endif %}
+      </div>
+      {% if is_dir %}
+        <h2 class="h6 text-muted">Contents</h2>
+        <div class="fs-table">
+          {% for item in entries %}
+            <div class="fs-row">
+              <div class="fs-entry-name">
+                <span>{% if item.is_dir %}📁{% else %}📄{% endif %}</span>
+                <span>{{ item.name }}{% if item.is_dir %}/{% endif %}</span>
+              </div>
+              <div class="fs-entry-meta">
+                {% if not item.is_dir %}<span>{{ item.size|filesizeformat }}</span>{% endif %}
+                <span>{{ item.modified|date:"Y-m-d H:i" }}</span>
+              </div>
+            </div>
+          {% empty %}
+            <div class="file-empty-state">Folder is empty.</div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="code-block">{{ link.path }}</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

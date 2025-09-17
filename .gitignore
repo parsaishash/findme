@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*.sqlite3
+db.sqllite3
+.venv/
+.coverage
+migrations/
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+## MacOS file-system
+.DS_Store
+media/
+.env
+venv
+venv/
