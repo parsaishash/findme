@@ -9,6 +9,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import redirect_to_login
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.views import View
@@ -166,6 +167,16 @@ class UploadView(LoginRequiredMixin, FormView):
             utils.log_upload(self.request.user, relative_path, uploaded.name, uploaded.size)
             saved.append(uploaded.name)
 
+        if self._wants_partial():
+            # Re-render the entries fragment for HTMX swap
+            target_dir = utils.resolve_target_path(relative_path)
+            entries = utils.filter_child_entries(self.request.user, relative_path, target_dir.iterdir())
+            html = render_to_string(
+                "browser/_entries.html",
+                {"entries": entries},
+                request=self.request,
+            )
+            return HttpResponse(f'<div id="file-list">{html}</div>')
         if self._wants_json():
             return JsonResponse({"success": True, "files": saved})
         messages.success(self.request, _("Uploaded %(count)s file(s).") % {"count": len(saved)})
@@ -175,6 +186,10 @@ class UploadView(LoginRequiredMixin, FormView):
         accept = self.request.headers.get("Accept", "")
         requested_with = self.request.headers.get("X-Requested-With")
         return "application/json" in accept or requested_with == "XMLHttpRequest"
+
+    def _wants_partial(self) -> bool:
+        # Prefer HTMX full fragment return for browser list refresh
+        return self.request.headers.get("HX-Request") == "true"
 
     def _redirect_response(self, relative_path: str) -> HttpResponse:
         target = relative_path or ""

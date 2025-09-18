@@ -3,11 +3,11 @@
 {% block title %}Files · FileServer{% endblock %}
 
 {% block content %}
-<div class="card-surface p-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="card-surface p-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-      <h1 class="h5 mb-1">File Explorer</h1>
-      <p class="text-muted small mb-0">{{ current_path|default:'/' }}</p>
+      <h1 class="h6 mb-1 d-flex align-items-center gap-2"><i class="bi bi-folder"></i> File Explorer</h1>
+      <p class="text-secondary small mb-0">{{ current_path|default:'/' }}</p>
     </div>
     <div class="d-flex gap-2">
       <button
@@ -16,96 +16,17 @@
         data-bs-target="#uploadModal"
         data-path="{{ current_path }}"
       >
-        <i class="bi bi-cloud-arrow-up me-1" aria-hidden="true"></i>
+        <i class="bi bi-cloud-arrow-up me-1"></i>
         Upload
       </button>
       {% if can_navigate_up %}
-        <a class="btn btn-outline-secondary btn-sm" href="{% if parent_path %}{% url 'browser:browse' path=parent_path %}{% else %}{% url 'browser:root' %}{% endif %}">
-          <i class="bi bi-arrow-90deg-up me-1" aria-hidden="true"></i>
-          Up
-        </a>
+        <a class="btn btn-outline-secondary btn-sm" href="{% if parent_path %}{% url 'browser:browse' path=parent_path %}{% else %}{% url 'browser:root' %}{% endif %}"><i class="bi bi-arrow-90deg-up me-1"></i> Up</a>
       {% endif %}
     </div>
   </div>
-
-  {% if entries %}
-    <div class="fs-table">
-      {% for entry in entries %}
-        <div class="fs-row">
-          <div class="fs-entry-name">
-            {% if entry.is_dir %}
-              <span class="fs-entry-icon"><i class="bi bi-folder2" aria-hidden="true"></i></span>
-              <a href="{% url 'browser:browse' path=entry.path %}" class="text-decoration-none d-block">{{ entry.name }}/</a>
-            {% else %}
-              <span class="fs-entry-icon"><i class="bi bi-file-earmark" aria-hidden="true"></i></span>
-              <a href="{% url 'download:file' path=entry.path %}" class="text-decoration-none d-block">{{ entry.name }}</a>
-            {% endif %}
-          </div>
-          <div class="fs-entry-meta d-flex align-items-center gap-3">
-            <span class="text-muted small">{{ entry.modified|date:"Y-m-d H:i" }}</span>
-            {% if not entry.is_dir %}
-              <span class="text-muted small">{{ entry.size|filesizeformat }}</span>
-            {% endif %}
-            <div class="dropdown">
-              <button class="btn btn-icon btn-outline-secondary btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Open actions">
-                <i class="bi bi-three-dots" aria-hidden="true"></i>
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                {% if entry.is_dir %}
-                  <li><a class="dropdown-item" href="{% url 'browser:browse' path=entry.path %}">Open</a></li>
-                  <li><a class="dropdown-item" href="{% url 'download:folder' path=entry.path %}?format=tar.gz">Download (.tar.gz)</a></li>
-                  <li><a class="dropdown-item" href="{% url 'download:folder' path=entry.path %}?format=zip">Download (.zip)</a></li>
-                  <li>
-                    <button
-                      class="dropdown-item"
-                      type="button"
-                      data-copy="{{ request.scheme }}://{{ request.get_host }}{% url 'download:folder' path=entry.path %}?format=tar.gz&token=<token>"
-                    >Copy CLI Token URL</button>
-                  </li>
-                  <li>
-                    <button
-                      class="dropdown-item"
-                      data-bs-toggle="modal"
-                      data-bs-target="#uploadModal"
-                      data-path="{{ entry.path }}"
-                    >Upload</button>
-                  </li>
-                {% else %}
-                  <li><a class="dropdown-item" href="{% url 'download:file' path=entry.path %}">Download</a></li>
-                  <li>
-                    <button
-                      class="dropdown-item"
-                      type="button"
-                      data-copy="{{ request.scheme }}://{{ request.get_host }}{% url 'download:file' path=entry.path %}"
-                    >Copy Download URL</button>
-                  </li>
-                  <li>
-                    <button
-                      class="dropdown-item"
-                      type="button"
-                      data-copy="{{ request.scheme }}://{{ request.get_host }}{% url 'download:file' path=entry.path %}?token=<token>"
-                    >Copy CLI Token URL</button>
-                  </li>
-                {% endif %}
-                <li>
-                  <button
-                    class="dropdown-item"
-                    data-bs-toggle="modal"
-                    data-bs-target="#shareModal"
-                    data-path="{{ entry.path }}"
-                  >Generate Share Link</button>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      {% endfor %}
-    </div>
-  {% else %}
-    <div class="text-center py-5 text-muted">
-      <p>No files here yet. Use the upload button to get started.</p>
-    </div>
-  {% endif %}
+  <div id="file-list">
+    {% include "browser/_entries.html" %}
+  </div>
 </div>
 
 {% if current_path %}
@@ -124,7 +45,8 @@
       </div>
       <div class="modal-body">
         <p class="text-muted small">Destination: <span data-upload-path>{{ current_path|default:'/' }}</span></p>
-        <form method="post" enctype="multipart/form-data" action="{{ upload_url }}" data-upload-base="{% url 'upload:root' %}">
+        <form method="post" enctype="multipart/form-data" action="{{ upload_url }}" data-upload-base="{% url 'upload:root' %}"
+              hx-post="{{ upload_url }}" hx-target="#file-list" hx-swap="outerHTML">
           {% csrf_token %}
           <input type="hidden" name="target_path" value="{{ current_path }}" />
           <div class="mb-3">
@@ -135,7 +57,7 @@
           </div>
           <div class="d-flex justify-content-end gap-2">
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-dark">Upload</button>
+            <button type="submit" class="btn btn-primary">Upload</button>
           </div>
         </form>
       </div>
