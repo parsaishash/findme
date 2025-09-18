@@ -1,0 +1,33 @@
+<div class="row g-3">
+  <div class="col-12 col-lg-8">
+    <div class="card-surface p-3">
+      {% if is_image %}
+        <img src="{% url 'download:file' path=path %}" alt="{{ meta.name }}" class="img-fluid" />
+      {% elif is_json %}
+        <pre class="mb-0"><code class="language-json">{{ payload }}</code></pre>
+      {% elif is_markdown %}
+        <div id="md-preview" class="markdown-body" style="max-width: none;">{{ payload }}</div>
+      {% else %}
+        <pre class="mb-0"><code class="language-{{ file_extension }}">{{ payload }}</code></pre>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-12 col-lg-4">
+    <div class="card-surface p-3">
+      <h2 class="h6">Details</h2>
+      <dl class="row mb-0">
+        <dt class="col-4">Name</dt>
+        <dd class="col-8">{{ meta.name }}</dd>
+        <dt class="col-4">Type</dt>
+        <dd class="col-8">{{ content_type }}</dd>
+        <dt class="col-4">Size</dt>
+        <dd class="col-8">{{ meta.size|filesizeformat }}</dd>
+        <dt class="col-4">Modified</dt>
+        <dd class="col-8">{{ meta.modified|date:"Y-m-d H:i" }}</dd>
+        <dt class="col-4">Created</dt>
+        <dd class="col-8">{{ meta.created|date:"Y-m-d H:i" }}</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+

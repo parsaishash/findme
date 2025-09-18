@@ -202,3 +202,93 @@ class HealthCheckView(View):
 
     def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
         return JsonResponse({"status": "ok"})
+
+
+class PreviewFileView(LoginRequiredMixin, View):
+    """Serve a lightweight preview payload for supported file types."""
+
+    MAX_TEXT_PREVIEW_BYTES = 512 * 1024  # 512KB safety cap
+
+    def get(self, request: HttpRequest, path: str) -> HttpResponse:
+        relative_path = path
+        if not utils.user_has_access(request.user, relative_path):
+            raise Http404("You do not have access to this file.")
+        target = utils.resolve_target_path(relative_path)
+        if not target.exists() or not target.is_file():
+            raise Http404("File not found.")
+
+        content_type, payload, is_binary = self._read_preview_payload(target)
+
+        meta = self._build_meta(target)
+        
+        # Determine file type flags for template
+        is_image = content_type and content_type.startswith('image/')
+        is_json = content_type in ['application/json', 'application/javascript'] or relative_path.lower().endswith('.json')
+        is_markdown = relative_path.lower().endswith(('.md', '.markdown'))
+        file_extension = relative_path.split('.')[-1].lower() if '.' in relative_path else ''
+
+        # If HTMX, render a partial suitable for modal body or inline container
+        if request.headers.get("HX-Request") == "true":
+            html = render_to_string(
+                "browser/_preview.html",
+                {
+                    "content_type": content_type, 
+                    "payload": payload, 
+                    "is_binary": is_binary, 
+                    "is_image": is_image,
+                    "is_json": is_json,
+                    "is_markdown": is_markdown,
+                    "file_extension": file_extension,
+                    "meta": meta, 
+                    "path": relative_path
+                },
+                request=request,
+            )
+            return HttpResponse(html)
+
+        # Fallback JSON response (useful for debugging)
+        return JsonResponse({
+            "content_type": content_type,
+            "payload": payload if not is_binary else None,
+            "is_binary": is_binary,
+            "meta": meta,
+        })
+
+    def _read_preview_payload(self, path_obj):
+        import mimetypes
+        mtype, _ = mimetypes.guess_type(str(path_obj))
+        mtype = mtype or "application/octet-stream"
+
+        text_like = (
+            mtype.startswith("text/")
+            or mtype in {"application/json", "application/javascript"}
+            or any(str(path_obj).lower().endswith(ext) for ext in [
+                ".md", ".markdown", ".py", ".sh", ".bash", ".c", ".cc", ".cpp", ".h", ".hpp", ".js", ".ts", ".tsx", ".html", ".css"
+            ])
+        )
+
+        if text_like:
+            with path_obj.open("rb") as f:
+                data = f.read(self.MAX_TEXT_PREVIEW_BYTES)
+            try:
+                text = data.decode("utf-8", errors="replace")
+            except Exception:
+                text = data.decode("latin1", errors="replace")
+            return mtype, text, False
+
+        # For images, return data URL stub indicator; template will render <img src="...download...">
+        if mtype.startswith("image/"):
+            return mtype, None, True
+
+        # Default: binary
+        return mtype, None, True
+
+    def _build_meta(self, path_obj):
+        import datetime
+        stat = path_obj.stat()
+        return {
+            "size": stat.st_size,
+            "modified": datetime.datetime.fromtimestamp(stat.st_mtime),
+            "created": datetime.datetime.fromtimestamp(stat.st_ctime),
+            "name": path_obj.name,
+        }

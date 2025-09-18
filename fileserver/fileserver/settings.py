@@ -5,18 +5,41 @@ import os
 from pathlib import Path
 from typing import Any, Dict
 
+from fileserver.env import load_env
+
+load_env()
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
+
+def env_bool(name: str, default: bool = False) -> bool:
+    """Read a boolean environment variable."""
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_list(name: str, default: str | None = None) -> list[str]:
+    """Read a comma-separated list from the environment."""
+    raw = os.environ.get(name)
+    if raw is None:
+        raw = default or ""
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+ENVIRONMENT = os.environ.get("DJANGO_ENV", "development").strip().lower() or "development"
+DEBUG = env_bool("DJANGO_DEBUG", default=ENVIRONMENT in {"development", "dev", "local"})
+
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "unsafe-development-secret-key")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
+if not DEBUG and SECRET_KEY == "unsafe-development-secret-key":
+    raise ValueError("DJANGO_SECRET_KEY must be set when DEBUG is False.")
 
-ALLOWED_HOSTS: list[str] = os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+ALLOWED_HOSTS: list[str] = env_list("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost")
+CSRF_TRUSTED_ORIGINS: list[str] = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 # Application definition
-
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -105,6 +128,58 @@ LOGOUT_REDIRECT_URL = "core:login"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Security hardening for production
+SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", default=not DEBUG)
+SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_SECURE_HSTS_SECONDS", "0" if DEBUG else "31536000"))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool(
+    "DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", default=SECURE_HSTS_SECONDS > 0
+)
+SECURE_HSTS_PRELOAD = env_bool("DJANGO_SECURE_HSTS_PRELOAD", default=False)
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SESSION_COOKIE_SECURE = env_bool("DJANGO_SESSION_COOKIE_SECURE", default=not DEBUG)
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = os.environ.get("DJANGO_SESSION_COOKIE_SAMESITE", "Lax")
+CSRF_COOKIE_SECURE = env_bool("DJANGO_CSRF_COOKIE_SECURE", default=not DEBUG)
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = os.environ.get("DJANGO_CSRF_COOKIE_SAMESITE", "Lax")
+REFERRER_POLICY = os.environ.get("DJANGO_REFERRER_POLICY", "strict-origin-when-cross-origin")
+USE_X_FORWARDED_HOST = env_bool("DJANGO_USE_X_FORWARDED_HOST", default=False)
+
+if env_bool("DJANGO_USE_X_FORWARDED_PROTO", default=USE_X_FORWARDED_HOST):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+X_FRAME_OPTIONS = os.environ.get("DJANGO_X_FRAME_OPTIONS", "DENY")
+
+LOG_LEVEL = os.environ.get("DJANGO_LOG_LEVEL", "DEBUG" if DEBUG else "INFO")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "default": {
+            "format": "%(levelname)s %(asctime)s %(name)s %(message)s",
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "default",
+        }
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": LOG_LEVEL,
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": LOG_LEVEL,
+            "propagate": False,
+        }
+    },
+}
+
 # File server configuration
 FILE_SERVER_ROOT = Path(os.environ.get("FILE_SERVER_ROOT", BASE_DIR / "data")).resolve()
 FILE_SERVER_ROOT.mkdir(parents=True, exist_ok=True)
@@ -114,3 +189,7 @@ SHARE_LINK_EXPIRY_HOURS = int(os.environ.get("SHARE_LINK_EXPIRY_HOURS", 24))
 
 # Light/dark theme default
 DEFAULT_THEME = os.environ.get("FILESERVER_DEFAULT_THEME", "light")
+
+# Email configuration defaults to console backend in development
+if DEBUG:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

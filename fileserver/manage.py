@@ -3,6 +3,11 @@
 import os
 import sys
 
+from fileserver.env import load_env
+
+
+load_env()
+
 
 def main() -> None:
     """Run administrative tasks."""

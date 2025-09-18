@@ -12,10 +12,51 @@ html, body {
 /* Sidebar */
 .sidebar {
   background-color: var(--bs-body-bg);
+  position: relative;
+  transition: width 0.3s ease;
+  min-width: 3rem;
+  max-width: 20rem;
+  width: 16rem;
+}
+
+.sidebar.collapsed {
+  width: 3rem;
 }
 
 .sidebar .nav-link {
   color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.sidebar.collapsed .nav-link {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  justify-content: center;
+}
+
+.sidebar.collapsed .nav-link span {
+  opacity: 0;
+  width: 0;
+  display: none;
+}
+
+.sidebar.collapsed .navbar-brand span {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-footer .d-flex {
+  justify-content: center;
+}
+
+.sidebar.collapsed .dropdown-toggle span {
+  display: none;
+}
+
+.sidebar.collapsed .dropdown-toggle {
+  justify-content: center;
+  padding: 0.5rem;
 }
 
 .sidebar .nav-link.active,
@@ -25,6 +66,66 @@ html, body {
 
 [data-bs-theme="dark"] .sidebar .nav-link:hover {
   background-color: rgba(255,255,255,.06);
+}
+
+/* Resize handle */
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  background: transparent;
+  cursor: col-resize;
+  z-index: 10;
+}
+
+.sidebar-resize-handle:hover {
+  background: var(--bs-primary);
+}
+
+/* Sidebar content */
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.sidebar-main {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid var(--bs-border-color);
+}
+
+/* Collapse button */
+.sidebar-toggle {
+  position: absolute;
+  top: 1rem;
+  right: 0.5rem;
+  z-index: 20;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 50%;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.sidebar.collapsed .sidebar-toggle {
+  right: -1rem;
+}
+
+.sidebar-toggle:hover {
+  background: var(--bs-secondary-bg);
 }
 
 /* Content header */
@@ -43,6 +144,35 @@ html, body {
 .form-control,
 .btn {
   box-shadow: none !important;
+}
+
+/* Markdown preview styling to match parent background */
+.markdown-body {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+[data-bs-theme="dark"] .markdown-body {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  color: inherit;
+}
+
+[data-bs-theme="dark"] .markdown-body h1,
+[data-bs-theme="dark"] .markdown-body h2,
+[data-bs-theme="dark"] .markdown-body h3,
+[data-bs-theme="dark"] .markdown-body h4,
+[data-bs-theme="dark"] .markdown-body h5,
+[data-bs-theme="dark"] .markdown-body h6 {
+  color: inherit;
 }
 
 .card-surface {
