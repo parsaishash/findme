@@ -27,12 +27,18 @@
           {% for item in entries %}
             <div class="fs-row">
               <div class="fs-entry-name">
-                <span>{% if item.is_dir %}📁{% else %}📄{% endif %}</span>
+                <span class="fs-entry-icon">
+                  {% if item.is_dir %}
+                    <i class="bi bi-folder2" aria-hidden="true"></i>
+                  {% else %}
+                    <i class="bi bi-file-earmark" aria-hidden="true"></i>
+                  {% endif %}
+                </span>
                 <span>{{ item.name }}{% if item.is_dir %}/{% endif %}</span>
               </div>
               <div class="fs-entry-meta">
-                {% if not item.is_dir %}<span>{{ item.size|filesizeformat }}</span>{% endif %}
-                <span>{{ item.modified|date:"Y-m-d H:i" }}</span>
+                {% if not item.is_dir %}<span class="text-muted small">{{ item.size|filesizeformat }}</span>{% endif %}
+                <span class="text-muted small">{{ item.modified|date:"Y-m-d H:i" }}</span>
               </div>
             </div>
           {% empty %}

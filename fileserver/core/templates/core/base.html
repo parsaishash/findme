@@ -5,24 +5,23 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}FileServer{% endblock %}</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
-      crossorigin="anonymous"
-    />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'core/css/app.css' %}" />
     {% block extra_css %}{% endblock %}
   </head>
   <body data-theme="{{ theme|default:'light' }}">
-    <nav class="navbar navbar-expand-lg bg-transparent py-3">
+    <nav class="navbar navbar-expand-lg py-3 border-bottom">
       <div class="container-xl">
-        <span class="navbar-brand nav-logo">FILESERVER</span>
+        <a class="navbar-brand nav-logo" href="{% url 'browser:root' %}">
+          <span class="nav-logo-icon"><i class="bi bi-brightness-high" aria-hidden="true"></i></span>
+          <span>FileServer</span>
+        </a>
         <div class="flex-grow-1 mx-4 d-none d-md-block">
           {% block breadcrumbs %}
             {% if breadcrumbs %}
               <nav aria-label="breadcrumb">
-                <ol class="breadcrumb fs-breadcrumbs mb-0">
+                <ol class="breadcrumb mb-0">
                   {% for label, url in breadcrumbs %}
                     {% if forloop.last %}
                       <li class="breadcrumb-item active" aria-current="page">{{ label }}</li>
@@ -38,17 +37,17 @@
         <div class="d-flex align-items-center gap-3">
           <form id="theme-toggle-form" method="post" action="{% url 'core:theme-toggle' %}">
             {% csrf_token %}
-            <button type="submit" class="theme-toggle" title="Toggle theme">
-              {% if theme == 'dark' %}☀️{% else %}🌙{% endif %}
+            <button type="submit" class="btn btn-sm btn-outline-secondary theme-toggle" title="Toggle theme">
+              {% if theme == 'dark' %}<i class="bi bi-brightness-high" aria-hidden="true"></i>{% else %}<i class="bi bi-moon" aria-hidden="true"></i>{% endif %}
             </button>
           </form>
           {% if user.is_authenticated %}
             <div class="dropdown">
-              <button class="btn btn-sm btn-outline-secondary rounded-pill dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                 {{ user.username }}
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
-                <li><span class="dropdown-item-text text-muted">Signed in</span></li>
+                <li><span class="dropdown-item-text text-muted small">Signed in</span></li>
                 <li><hr class="dropdown-divider" /></li>
                 <li><a class="dropdown-item" href="{% url 'core:token' %}">Generate CLI Token</a></li>
                 {% if user.is_superuser %}
@@ -59,7 +58,7 @@
               </ul>
             </div>
           {% else %}
-            <a class="btn btn-outline-secondary btn-sm rounded-pill" href="{% url 'core:login' %}">Login</a>
+            <a class="btn btn-outline-secondary btn-sm" href="{% url 'core:login' %}">Login</a>
           {% endif %}
         </div>
       </div>
@@ -69,23 +68,20 @@
       {% if messages %}
         <div class="mb-3">
           {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} rounded-pill" role="alert">{{ message }}</div>
+            <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
           {% endfor %}
         </div>
       {% endif %}
       {% block content %}{% endblock %}
     </main>
 
-    <footer class="container-xl fs-footer d-flex justify-content-between align-items-center">
-      <span>&copy; {% now "Y" %} {{ app_name }}</span>
-      <span>{{ app_version }}</span>
+    <footer class="container-xl mt-5 py-3 d-flex justify-content-between align-items-center text-muted small border-top">
+      <span>&copy; {% now "Y" %} FileServer</span>
+      <span>v1.0</span>
     </footer>
 
-    <script
-      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-      integrity="sha384-w76A2z02tPqdj+0hU1I6vb4YKZl7FLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm9"
-      crossorigin="anonymous"
-    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" integrity="sha384-G/EV+4j2dNv+tEPo3++6LCgdCROaejBqfUeNjuKAiuXbjrxilcCdDz6ZAVfHWe1Y" crossorigin="anonymous"></script>
     <script src="{% static 'core/js/app.js' %}"></script>
     {% block extra_js %}{% endblock %}
   </body>
