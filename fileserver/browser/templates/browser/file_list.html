@@ -47,7 +47,7 @@
       <div class="modal-body">
         <p class="text-muted small">Destination: <span data-upload-path>{{ current_path|default:'/' }}</span></p>
         <form method="post" enctype="multipart/form-data" action="{{ upload_url }}" data-upload-base="{% url 'upload:root' %}"
-              hx-post="{{ upload_url }}" hx-target="#file-list" hx-swap="outerHTML">
+              hx-post="{{ upload_url }}" hx-target="#file-list" hx-swap="outerHTML" hx-encoding="multipart/form-data">
           {% csrf_token %}
           <input type="hidden" name="target_path" value="{{ current_path }}" />
           <div class="mb-3">
