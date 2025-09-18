@@ -1,0 +1,42 @@
+{% if entries %}
+  <div class="list-group">
+    {% for entry in entries %}
+      <div class="list-group-item d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+          {% if entry.is_dir %}
+            <i class="bi bi-folder2"></i>
+            <a href="{% url 'browser:browse' path=entry.path %}" class="text-decoration-none">{{ entry.name }}/</a>
+          {% else %}
+            <i class="bi bi-file-earmark"></i>
+            <a href="{% url 'download:file' path=entry.path %}" class="text-decoration-none">{{ entry.name }}</a>
+          {% endif %}
+        </div>
+        <div class="d-flex align-items-center gap-3">
+          <span class="text-secondary small">{{ entry.modified|date:"Y-m-d H:i" }}</span>
+          {% if not entry.is_dir %}<span class="text-secondary small">{{ entry.size|filesizeformat }}</span>{% endif %}
+          <div class="dropdown">
+            <button class="btn btn-neutral-secondary btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-three-dots"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              {% if entry.is_dir %}
+                <li><a class="dropdown-item" href="{% url 'browser:browse' path=entry.path %}">Open</a></li>
+                <li><a class="dropdown-item" href="{% url 'download:folder' path=entry.path %}?format=tar.gz">Download (.tar.gz)</a></li>
+                <li><a class="dropdown-item" href="{% url 'download:folder' path=entry.path %}?format=zip">Download (.zip)</a></li>
+                <li><button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#uploadModal" data-path="{{ entry.path }}">Upload</button></li>
+              {% else %}
+                <li><a class="dropdown-item" href="{% url 'download:file' path=entry.path %}">Download</a></li>
+              {% endif %}
+              <li><button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#shareModal" data-path="{{ entry.path }}">Generate Share Link</button></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="text-center py-5 text-secondary">
+    <p>No files here yet. Use the upload button to get started.</p>
+  </div>
+{% endif %}
+

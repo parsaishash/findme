@@ -1,4 +1,19 @@
 (function () {
+  function getCsrfToken() {
+    var cookieValue = null;
+    var name = 'csrftoken';
+    if (document.cookie && document.cookie !== '') {
+      var cookies = document.cookie.split(';');
+      for (var i = 0; i < cookies.length; i++) {
+        var cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
   function handleAsyncForm(form, onSuccess) {
     if (!form) return;
     form.addEventListener("submit", function (event) {
@@ -74,6 +89,15 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
+    // Configure HTMX CSRF and default swap
+    if (window.htmx) {
+      document.body.addEventListener('htmx:configRequest', function(evt) {
+        evt.detail.headers['X-CSRFToken'] = getCsrfToken();
+      });
+      htmx.config.historyEnabled = true;
+      htmx.config.refreshOnHistoryMiss = true;
+      htmx.config.defaultSwapStyle = 'outerHTML';
+    }
     const shareModal = document.getElementById("shareModal");
     if (shareModal) {
       shareModal.addEventListener("show.bs.modal", function (event) {
@@ -185,14 +209,33 @@
           method: "POST",
           headers: {
             "X-Requested-With": "XMLHttpRequest",
-            "X-CSRFToken": themeForm.querySelector("input[name=csrfmiddlewaretoken]").value,
+            "X-CSRFToken": getCsrfToken(),
           },
           credentials: "same-origin",
         })
           .then((response) => response.json())
           .then((data) => {
             if (data.theme) {
-              document.body.setAttribute("data-theme", data.theme);
+              // Use Bootstrap color modes via data-bs-theme
+              document.documentElement.setAttribute('data-bs-theme', data.theme);
+              // Update toggle icon without reload
+              try {
+                var btn = themeForm.querySelector('button');
+                var icon = btn ? btn.querySelector('i') : null;
+                if (icon) {
+                  if (data.theme === 'dark') {
+                    icon.classList.remove('bi-moon');
+                    icon.classList.add('bi-brightness-high');
+                    btn.title = 'Switch to light mode';
+                  } else {
+                    icon.classList.remove('bi-brightness-high');
+                    icon.classList.add('bi-moon');
+                    btn.title = 'Switch to dark mode';
+                  }
+                }
+              } catch (e) {
+                // no-op
+              }
             }
           })
           .catch(() => {
