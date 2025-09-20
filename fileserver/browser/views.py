@@ -161,6 +161,11 @@ class UploadView(LoginRequiredMixin, FormView):
         for uploaded in uploaded_files:
             destination = target_dir / uploaded.name
             destination.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                uploaded.seek(0)
+            except Exception:
+                # Some uploaded file wrappers may not support seek, ignore errors
+                pass
             with destination.open("wb") as dest:
                 for chunk in uploaded.chunks():
                     dest.write(chunk)
@@ -189,7 +194,7 @@ class UploadView(LoginRequiredMixin, FormView):
 
     def _wants_partial(self) -> bool:
         # Prefer HTMX full fragment return for browser list refresh
-        return self.request.headers.get("HX-Request") == "true"
+        return self.request.headers.get("HX-Request", "").lower() == "true"
 
     def _redirect_response(self, relative_path: str) -> HttpResponse:
         target = relative_path or ""

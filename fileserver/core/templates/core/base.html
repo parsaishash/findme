@@ -11,107 +11,77 @@
     {% block extra_css %}{% endblock %}
   </head>
   <body hx-boost="true">
-    <div class="container-fluid">
-      <div class="row min-vh-100">
-        <aside class="col-12 col-md-3 col-lg-2 border-end py-3 sidebar" id="sidebar">
-          <div class="sidebar-resize-handle" id="resize-handle"></div>
-          <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle sidebar">
-            <i class="bi bi-chevron-left"></i>
-          </button>
-          
-          <div class="sidebar-content">
-            <div class="sidebar-main">
-              <div class="px-3 mb-3">
-                <a class="navbar-brand d-inline-flex align-items-center gap-2" href="{% url 'browser:root' %}">
-                  <i class="bi bi-hdd-network"></i>
-                  <span class="fw-semibold">FileServer</span>
-                </a>
-              </div>
-              <nav class="nav flex-column px-3 gap-1">
-                <a class="nav-link d-flex align-items-center gap-2" href="{% url 'browser:root' %}"><i class="bi bi-folder"></i> <span>Browse</span></a>
-                {% if user.is_authenticated %}
-                  <a class="nav-link d-flex align-items-center gap-2" href="{% url 'core:token' %}"><i class="bi bi-terminal"></i> <span>CLI Tokens</span></a>
-                  {% if user.is_superuser %}
-                    <a class="nav-link d-flex align-items-center gap-2" href="{% url 'users:manage' %}"><i class="bi bi-people"></i> <span>Users</span></a>
-                  {% endif %}
-                {% endif %}
-              </nav>
-            </div>
-            
-            <div class="sidebar-footer px-3">
-              <div class="d-flex align-items-center gap-2 mb-2">
-                {% if user.is_authenticated %}
-                  <div class="dropdown flex-shrink-0">
-                    <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                      <i class="bi bi-person-circle me-2"></i>
-                      <span>{{ user.username }}</span>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-dark text-small shadow">
-                      <li><a class="dropdown-item" href="{% url 'core:token' %}"><i class="bi bi-terminal me-2"></i>CLI Tokens</a></li>
-                      {% if user.is_superuser %}
-                        <li><a class="dropdown-item" href="{% url 'users:manage' %}"><i class="bi bi-people me-2"></i>Users</a></li>
-                      {% endif %}
-                      <li><hr class="dropdown-divider"></li>
-                      <li>
-                        <form method="post" action="{% url 'core:logout' %}" class="d-inline" hx-boost="false" hx-disable>
-                          {% csrf_token %}
-                          <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right me-2"></i>Sign out</button>
-                        </form>
-                      </li>
-                    </ul>
-                  </div>
-                {% else %}
-                  <a class="nav-link d-flex align-items-center gap-2 flex-shrink-0" href="{% url 'core:login' %}"><i class="bi bi-box-arrow-in-right"></i> <span>Login</span></a>
-                {% endif %}
+    <div class="app-shell d-flex min-vh-100">
+      <aside class="sidebar border-end py-3 d-none d-md-flex flex-column" id="sidebar">
+        <div class="sidebar-resize-handle d-none d-lg-block" id="resize-handle"></div>
+        <button class="sidebar-toggle d-none d-lg-flex" id="sidebar-toggle" title="Toggle sidebar">
+          <i class="bi bi-chevron-left"></i>
+        </button>
+        <div class="sidebar-content d-flex flex-column flex-grow-1">
+          {% include "core/_sidebar_inner.html" %}
+        </div>
+      </aside>
 
-                <div class="flex-grow-1"></div>
-
-                <form id="theme-toggle-form" method="post" action="{% url 'core:theme-toggle' %}" hx-boost="false" hx-disable class="ms-auto">
-                  {% csrf_token %}
-                  <button type="submit" class="btn btn-sm btn-outline-secondary" title="Toggle theme">
-                    {% if theme == 'dark' %}<i class="bi bi-brightness-high"></i>{% else %}<i class="bi bi-moon"></i>{% endif %}
-                  </button>
-                </form>
-              </div>
+      <div class="app-main flex-grow-1 d-flex flex-column p-3">
+        <header class="content-header mb-3">
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-outline-secondary d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
+              <i class="bi bi-list"></i>
+            </button>
+            <div class="flex-grow-1">
+              {% block breadcrumbs %}
+                {% if breadcrumbs %}
+                  <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                      {% for label, url in breadcrumbs %}
+                        {% if forloop.last %}
+                          <li class="breadcrumb-item active" aria-current="page">{{ label }}</li>
+                        {% else %}
+                          <li class="breadcrumb-item"><a href="{% if url %}{% url 'browser:browse' path=url %}{% else %}{% url 'browser:root' %}{% endif %}">{{ label }}</a></li>
+                        {% endif %}
+                      {% endfor %}
+                    </ol>
+                  </nav>
+                {% endif %}
+              {% endblock %}
             </div>
           </div>
-        </aside>
-        <section class="col-12 col-md-9 col-lg-10 d-flex flex-column p-3">
-          <header class="content-header mb-3">
-          {% block breadcrumbs %}
-            {% if breadcrumbs %}
-              <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0">
-                  {% for label, url in breadcrumbs %}
-                    {% if forloop.last %}
-                      <li class="breadcrumb-item active" aria-current="page">{{ label }}</li>
-                    {% else %}
-                      <li class="breadcrumb-item"><a href="{% if url %}{% url 'browser:browse' path=url %}{% else %}{% url 'browser:root' %}{% endif %}">{{ label }}</a></li>
-                    {% endif %}
-                  {% endfor %}
-                </ol>
-              </nav>
-            {% endif %}
-          {% endblock %}
-          </header>
+        </header>
 
-      {% if messages %}
-        <div class="mb-3">
-          {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
-          {% endfor %}
+        {% if messages %}
+          <div class="mb-3">
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <main class="flex-grow-1">
+          {% block content %}{% endblock %}
+        </main>
+
+        <footer class="mt-4 pt-3 text-muted small border-top d-flex justify-content-between align-items-center gap-2">
+          <span>&copy; {% now "Y" %} FileServer v1.0.0</span>
+          <form class="theme-toggle-form ms-auto" method="post" action="{% url 'core:theme-toggle' %}" hx-boost="false" hx-disable>
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-secondary" title="Toggle theme">
+              {% if theme == 'dark' %}<i class="bi bi-brightness-high"></i>{% else %}<i class="bi bi-moon"></i>{% endif %}
+            </button>
+          </form>
+          <span>v1.0.0</span>
+        </footer>
+      </div>
+    </div>
+
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+      <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="mobileSidebarLabel">FileServer</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body p-0">
+        <div class="d-flex flex-column h-100">
+          {% include "core/_sidebar_inner.html" %}
         </div>
-      {% endif %}
-
-          <main class="flex-grow-1">
-      {% block content %}{% endblock %}
-    </main>
-
-          <footer class="mt-4 pt-3 text-muted small border-top d-flex justify-content-between">
-      <span>&copy; {% now "Y" %} FileServer</span>
-      <span>v1.0</span>
-    </footer>
-        </section>
       </div>
     </div>
 

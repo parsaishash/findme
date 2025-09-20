@@ -65,8 +65,11 @@ def normalize_path(raw_path: str) -> str:
 def resolve_target_path(raw_path: str) -> Path:
     """Resolve a raw relative path against the FILE_SERVER_ROOT securely."""
     normalized = normalize_path(raw_path)
-    candidate = (settings.FILE_SERVER_ROOT / normalized).resolve()
-    if not str(candidate).startswith(str(settings.FILE_SERVER_ROOT)):
+    root = Path(settings.FILE_SERVER_ROOT).resolve()
+    candidate = (root / normalized).resolve() if normalized else root
+    try:
+        candidate.relative_to(root)
+    except ValueError:
         raise Http404("Invalid path.")
     return candidate
 

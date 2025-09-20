@@ -1,6 +1,7 @@
 """Django settings for fileserver project."""
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 from typing import Any, Dict
@@ -26,6 +27,17 @@ def env_list(name: str, default: str | None = None) -> list[str]:
     if raw is None:
         raw = default or ""
     return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+def env_log_level(name: str, default: str) -> str:
+    """Return a valid logging level name from the environment."""
+    raw = os.environ.get(name, default)
+    if not isinstance(raw, str):
+        return default.upper()
+    level_name = raw.strip().upper()
+    if level_name not in logging._nameToLevel:
+        return default.upper()
+    return level_name
 
 
 ENVIRONMENT = os.environ.get("DJANGO_ENV", "development").strip().lower() or "development"
@@ -151,7 +163,7 @@ if env_bool("DJANGO_USE_X_FORWARDED_PROTO", default=USE_X_FORWARDED_HOST):
 
 X_FRAME_OPTIONS = os.environ.get("DJANGO_X_FRAME_OPTIONS", "DENY")
 
-LOG_LEVEL = os.environ.get("DJANGO_LOG_LEVEL", "DEBUG" if DEBUG else "INFO")
+LOG_LEVEL = env_log_level("DJANGO_LOG_LEVEL", "DEBUG" if DEBUG else "INFO")
 
 LOGGING = {
     "version": 1,

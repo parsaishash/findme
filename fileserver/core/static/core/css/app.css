@@ -20,7 +20,9 @@ html, body {
 }
 
 .sidebar.collapsed {
-  width: 3rem;
+  width: 4.5rem;
+  min-width: 4.5rem;
+  max-width: 4.5rem;
 }
 
 .sidebar .nav-link {
@@ -30,33 +32,56 @@ html, body {
   transition: all 0.3s ease;
 }
 
-.sidebar.collapsed .nav-link {
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
-  justify-content: center;
-}
-
-.sidebar.collapsed .nav-link span {
-  opacity: 0;
-  width: 0;
-  display: none;
-}
-
-.sidebar.collapsed .navbar-brand span {
-  display: none;
-}
-
-.sidebar.collapsed .sidebar-footer .d-flex {
-  justify-content: center;
-}
-
-.sidebar.collapsed .dropdown-toggle span {
-  display: none;
-}
-
-.sidebar.collapsed .dropdown-toggle {
+.sidebar.collapsed .navbar-brand {
   justify-content: center;
   padding: 0.5rem;
+}
+
+.sidebar.collapsed .navbar-brand span,
+.sidebar.collapsed .nav-link span,
+.sidebar.collapsed .dropdown-toggle span,
+.sidebar.collapsed .sidebar-footer .flex-grow-1 {
+  display: none !important;
+}
+
+.sidebar.collapsed .nav {
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+}
+
+.sidebar.collapsed .nav-link {
+  padding: 0.75rem 0;
+  justify-content: center;
+}
+
+.sidebar.collapsed .nav-link i {
+  font-size: 1.2rem;
+}
+
+.sidebar.collapsed .sidebar-footer {
+  border-top: none;
+  padding: 0.5rem;
+}
+
+.sidebar.collapsed .sidebar-footer .dropdown-toggle {
+  justify-content: center;
+  padding: 0.5rem;
+}
+
+.sidebar.collapsed .sidebar-footer .theme-toggle-form {
+  margin-left: 0;
+}
+
+.sidebar.collapsed .sidebar-footer .theme-toggle-form .btn {
+  width: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar.collapsed .sidebar-resize-handle {
+  display: none;
 }
 
 .sidebar .nav-link.active,
@@ -102,6 +127,15 @@ html, body {
   border-top: 1px solid var(--bs-border-color);
 }
 
+.offcanvas .sidebar-main {
+  flex: 1;
+  overflow: auto;
+}
+
+.offcanvas .sidebar-footer {
+  border-top: 1px solid var(--bs-border-color);
+}
+
 /* Collapse button */
 .sidebar-toggle {
   position: absolute;
@@ -126,6 +160,79 @@ html, body {
 
 .sidebar-toggle:hover {
   background: var(--bs-secondary-bg);
+}
+
+.app-main {
+  width: 100%;
+  max-width: 100%;
+}
+
+@media (max-width: 767.98px) {
+  .sidebar {
+    display: none !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .sidebar,
+  .sidebar.collapsed {
+    width: 4.5rem !important;
+    min-width: 4.5rem !important;
+    max-width: 4.5rem !important;
+  }
+
+  .sidebar .sidebar-resize-handle,
+  .sidebar .sidebar-toggle {
+    display: none !important;
+  }
+
+  .sidebar .navbar-brand {
+    justify-content: center;
+    padding: 0.5rem;
+  }
+
+  .sidebar .navbar-brand span,
+  .sidebar .nav-link span,
+  .sidebar .dropdown-toggle span,
+  .sidebar .sidebar-footer .flex-grow-1 {
+    display: none !important;
+  }
+
+  .sidebar .nav {
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0;
+  }
+
+  .sidebar .nav-link {
+    padding: 0.75rem 0;
+    justify-content: center;
+  }
+
+  .sidebar .nav-link i {
+    font-size: 1.2rem;
+  }
+
+  .sidebar .sidebar-footer {
+    border-top: none;
+    padding: 0.5rem;
+  }
+
+  .sidebar .sidebar-footer .dropdown-toggle {
+    justify-content: center;
+    padding: 0.5rem;
+  }
+
+  .sidebar .sidebar-footer .theme-toggle-form {
+    margin-left: 0;
+  }
+
+  .sidebar .sidebar-footer .theme-toggle-form .btn {
+    width: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 /* Content header */

@@ -93,57 +93,75 @@
     const sidebar = document.getElementById('sidebar');
     const resizeHandle = document.getElementById('resize-handle');
     const toggleButton = document.getElementById('sidebar-toggle');
-    const collapseThreshold = 120; // pixels
-    
+    const collapseThreshold = 150; // pixels
+
     if (!sidebar || !resizeHandle || !toggleButton) return;
 
-    // Load saved state from localStorage
-    const savedWidth = localStorage.getItem('sidebar-width');
-    const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
-    
-    if (isCollapsed) {
-      sidebar.classList.add('collapsed');
-      sidebar.style.width = '3rem';
-      toggleButton.querySelector('i').className = 'bi bi-chevron-right';
-    } else if (savedWidth) {
-      sidebar.style.width = savedWidth + 'px';
+    const savedWidthRaw = localStorage.getItem('sidebar-width');
+    let lastValidWidth = savedWidthRaw ? parseInt(savedWidthRaw, 10) : 256;
+    if (!Number.isFinite(lastValidWidth)) {
+      lastValidWidth = 256;
     }
 
-    // Resize functionality
+    let collapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+
+    const icon = toggleButton.querySelector('i');
+
+    const clampWidth = (value) => {
+      const min = 160;
+      const max = 320;
+      return Math.min(Math.max(value, min), max);
+    };
+
+    const applySidebarState = () => {
+      if (collapsed) {
+        sidebar.classList.add('collapsed');
+        sidebar.style.width = '4.5rem';
+        if (icon) icon.className = 'bi bi-chevron-right';
+        localStorage.setItem('sidebar-collapsed', 'true');
+      } else {
+        lastValidWidth = clampWidth(lastValidWidth);
+        sidebar.classList.remove('collapsed');
+        sidebar.style.width = `${lastValidWidth}px`;
+        if (icon) icon.className = 'bi bi-chevron-left';
+        localStorage.setItem('sidebar-collapsed', 'false');
+        localStorage.setItem('sidebar-width', lastValidWidth);
+      }
+    };
+
+    applySidebarState();
+
     let isResizing = false;
-    let lastValidWidth = savedWidth ? parseInt(savedWidth) : 256;
-    
-    resizeHandle.addEventListener('mousedown', function(e) {
+
+    resizeHandle.addEventListener('mousedown', function () {
+      if (collapsed) return;
       isResizing = true;
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
     });
 
-    document.addEventListener('mousemove', function(e) {
+    document.addEventListener('mousemove', function (e) {
       if (!isResizing) return;
-      
+
       const rect = sidebar.getBoundingClientRect();
       const newWidth = e.clientX - rect.left;
-      
-      if (newWidth >= 48 && newWidth <= 320) { // min 3rem, max 20rem
-        sidebar.style.width = newWidth + 'px';
-        lastValidWidth = newWidth;
-        localStorage.setItem('sidebar-width', newWidth);
-        
-        // Auto-collapse when below threshold
-        if (newWidth < collapseThreshold) {
-          sidebar.classList.add('collapsed');
-          toggleButton.querySelector('i').className = 'bi bi-chevron-right';
-          localStorage.setItem('sidebar-collapsed', 'true');
-        } else {
-          sidebar.classList.remove('collapsed');
-          toggleButton.querySelector('i').className = 'bi bi-chevron-left';
-          localStorage.setItem('sidebar-collapsed', 'false');
+
+      if (newWidth < collapseThreshold) {
+        collapsed = true;
+        applySidebarState();
+        return;
+      }
+
+      if (newWidth <= 400) {
+        lastValidWidth = clampWidth(newWidth);
+        if (collapsed) {
+          collapsed = false;
         }
+        applySidebarState();
       }
     });
 
-    document.addEventListener('mouseup', function() {
+    document.addEventListener('mouseup', function () {
       if (isResizing) {
         isResizing = false;
         document.body.style.cursor = '';
@@ -151,27 +169,15 @@
       }
     });
 
-    // Toggle functionality
-    toggleButton.addEventListener('click', function() {
-      const icon = toggleButton.querySelector('i');
-      
-      if (sidebar.classList.contains('collapsed')) {
-        // Expand: restore to last valid width
-        sidebar.classList.remove('collapsed');
-        icon.className = 'bi bi-chevron-left';
-        sidebar.style.width = lastValidWidth + 'px';
-        localStorage.setItem('sidebar-collapsed', 'false');
-        localStorage.setItem('sidebar-width', lastValidWidth);
-      } else {
-        // Collapse: save current width and collapse
-        const currentWidth = parseInt(sidebar.style.width) || 256;
-        lastValidWidth = currentWidth;
-        sidebar.classList.add('collapsed');
-        icon.className = 'bi bi-chevron-right';
-        sidebar.style.width = '3rem';
-        localStorage.setItem('sidebar-collapsed', 'true');
-        localStorage.setItem('sidebar-width', currentWidth);
+    toggleButton.addEventListener('click', function () {
+      if (!collapsed) {
+        const currentWidth = parseInt(sidebar.style.width, 10);
+        if (!Number.isNaN(currentWidth)) {
+          lastValidWidth = currentWidth;
+        }
       }
+      collapsed = !collapsed;
+      applySidebarState();
     });
   }
 
@@ -291,48 +297,51 @@
       });
     });
 
-    const themeForm = document.getElementById("theme-toggle-form");
-    if (themeForm) {
+    document.querySelectorAll(".theme-toggle-form").forEach(function (themeForm) {
       themeForm.addEventListener("submit", function (event) {
         event.preventDefault();
+        var tokenInput = themeForm.querySelector('input[name="csrfmiddlewaretoken"]');
+        var csrfToken = tokenInput ? tokenInput.value : getCsrfToken();
+        var headers = {
+          "X-Requested-With": "XMLHttpRequest",
+        };
+        if (csrfToken) {
+          headers["X-CSRFToken"] = csrfToken;
+        }
         fetch(themeForm.action, {
           method: "POST",
-          headers: {
-            "X-Requested-With": "XMLHttpRequest",
-            "X-CSRFToken": getCsrfToken(),
-          },
+          headers: headers,
           credentials: "same-origin",
         })
           .then((response) => response.json())
           .then((data) => {
-            if (data.theme) {
-              // Use Bootstrap color modes via data-bs-theme
-              document.documentElement.setAttribute('data-bs-theme', data.theme);
-              // Update toggle icon without reload
-              try {
-                var btn = themeForm.querySelector('button');
-                var icon = btn ? btn.querySelector('i') : null;
-                if (icon) {
-                  if (data.theme === 'dark') {
-                    icon.classList.remove('bi-moon');
-                    icon.classList.add('bi-brightness-high');
-                    btn.title = 'Switch to light mode';
-                  } else {
-                    icon.classList.remove('bi-brightness-high');
-                    icon.classList.add('bi-moon');
-                    btn.title = 'Switch to dark mode';
-                  }
-                }
-              } catch (e) {
-                // no-op
-              }
+            if (!data.theme) {
+              return;
             }
+
+            document.documentElement.setAttribute('data-bs-theme', data.theme);
+
+            document.querySelectorAll('.theme-toggle-form button').forEach(function (btn) {
+              var icon = btn.querySelector('i');
+              if (!icon) {
+                return;
+              }
+              if (data.theme === 'dark') {
+                icon.classList.remove('bi-moon');
+                icon.classList.add('bi-brightness-high');
+                btn.title = 'Switch to light mode';
+              } else {
+                icon.classList.remove('bi-brightness-high');
+                icon.classList.add('bi-moon');
+                btn.title = 'Switch to dark mode';
+              }
+            });
           })
           .catch(() => {
             showToast("Unable to toggle theme");
           });
       });
-    }
+    });
 
     document.querySelectorAll("form[data-async-token]").forEach((form) => {
       handleAsyncForm(form, function (data) {
