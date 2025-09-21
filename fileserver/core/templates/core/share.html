@@ -16,9 +16,9 @@
         <span class="badge text-bg-light">{{ token }}</span>
       </div>
       <div class="d-flex gap-2 mb-3">
-        <a href="{{ download_url }}" class="btn btn-primary">Download{% if is_dir %} (.tar.gz){% endif %}</a>
+        <a href="{{ download_url }}" class="btn btn-primary" download>Download{% if is_dir %} (.tar.gz){% endif %}</a>
         {% if is_dir %}
-          <a href="{{ zip_url }}" class="btn btn-outline-secondary">Download (.zip)</a>
+          <a href="{{ zip_url }}" class="btn btn-outline-secondary" download>Download (.zip)</a>
         {% endif %}
       </div>
       {% if is_dir %}
