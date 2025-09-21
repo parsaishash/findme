@@ -117,14 +117,50 @@
         });
       }
 
+      // Initialize Bootstrap dropdowns
+      function initializeDropdowns() {
+        // Dispose of existing dropdown instances to prevent memory leaks
+        document.querySelectorAll('.dropdown-toggle').forEach(function(toggle) {
+          const dropdown = bootstrap.Dropdown.getInstance(toggle);
+          if (dropdown) {
+            dropdown.dispose();
+          }
+        });
+        
+        // Initialize all dropdown toggles
+        document.querySelectorAll('.dropdown-toggle').forEach(function(toggle) {
+          new bootstrap.Dropdown(toggle);
+        });
+      }
+
       document.addEventListener('htmx:afterSwap', function(){
         highlightCode();
         renderMarkdown();
+        // Re-initialize Bootstrap dropdowns after content swap
+        initializeDropdowns();
+      });
+
+      document.addEventListener('htmx:afterSettle', function(){
+        highlightCode();
+        renderMarkdown();
+        // Re-initialize Bootstrap dropdowns after content settles
+        initializeDropdowns();
+      });
+
+      // Handle browser back/forward navigation
+      window.addEventListener('popstate', function(){
+        // Small delay to ensure DOM is updated
+        setTimeout(function(){
+          highlightCode();
+          renderMarkdown();
+          initializeDropdowns();
+        }, 100);
       });
       
       document.addEventListener('DOMContentLoaded', function(){
         highlightCode();
         renderMarkdown();
+        initializeDropdowns();
       });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
