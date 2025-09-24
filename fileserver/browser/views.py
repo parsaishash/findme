@@ -95,7 +95,11 @@ class DownloadFileView(TokenOrLoginRequiredMixin, View):
         target = utils.resolve_target_path(relative_path)
         if not target.exists() or not target.is_file():
             raise Http404("File not found.")
-        response = utils.serve_file(target)
+        dl_format = request.GET.get("format")
+        if dl_format in {"tar.gz", "zip", "tar.bz2"}:
+            response = utils.serve_single_file_archive(target, archive_format=dl_format)
+        else:
+            response = utils.serve_file(target)
         utils.log_download(self.get_logging_user(), relative_path, target.stat().st_size, is_share_link=False)
         return response
 

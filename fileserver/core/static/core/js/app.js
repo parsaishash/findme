@@ -275,6 +275,44 @@
       });
     }
 
+    // Persist preferred download format and rewrite links on click
+    const preferredKey = "download-format";
+    function setPreferredFormat(fmt) {
+      try { localStorage.setItem(preferredKey, fmt); } catch (e) {}
+    }
+    function getPreferredFormat() {
+      try { return localStorage.getItem(preferredKey) || "raw"; } catch (e) { return "raw"; }
+    }
+    document.body.addEventListener("click", function (ev) {
+      const link = ev.target.closest("a[data-download]");
+      if (!link) return;
+      let fmt = link.getAttribute("data-format") || "raw";
+      if (fmt === "preferred") {
+        fmt = getPreferredFormat();
+      }
+      setPreferredFormat(fmt);
+      // If user prefers raw, ensure no format parameter; otherwise append ?format=...
+      try {
+        const url = new URL(link.href, window.location.origin);
+        if (fmt === "raw") {
+          url.searchParams.delete("format");
+        } else {
+          url.searchParams.set("format", fmt);
+        }
+        link.href = url.toString();
+      } catch (e) {}
+    }, true);
+
+    // Optional: mark default download option in dropdowns
+    const preferred = getPreferredFormat();
+    document.querySelectorAll("a[data-download]").forEach((a) => {
+      let afmt = a.getAttribute("data-format") || "raw";
+      if (afmt === "preferred") afmt = preferred;
+      if (afmt === preferred) {
+        a.classList.add("active");
+      }
+    });
+
     document.querySelectorAll("[data-copy]").forEach((el) => {
       el.addEventListener("click", function () {
         const value = el.getAttribute("data-copy") || el.textContent;

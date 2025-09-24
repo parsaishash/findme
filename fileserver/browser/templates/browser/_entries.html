@@ -8,7 +8,7 @@
             <a href="{% url 'browser:browse' path=entry.path %}" class="text-decoration-none">{{ entry.name }}/</a>
           {% else %}
             <i class="bi bi-file-earmark"></i>
-            <a href="{% url 'download:file' path=entry.path %}" class="text-decoration-none">{{ entry.name }}</a>
+            <a href="{% url 'download:file' path=entry.path %}" class="text-decoration-none" data-download data-format="preferred">{{ entry.name }}</a>
           {% endif %}
         </div>
         <div class="d-flex align-items-center gap-3">
@@ -21,11 +21,15 @@
             <ul class="dropdown-menu dropdown-menu-end">
               {% if entry.is_dir %}
                 <li><a class="dropdown-item" href="{% url 'browser:browse' path=entry.path %}">Open</a></li>
-                <li><a class="dropdown-item" href="{% url 'download:folder' path=entry.path %}?format=tar.gz">Download (.tar.gz)</a></li>
-                <li><a class="dropdown-item" href="{% url 'download:folder' path=entry.path %}?format=zip">Download (.zip)</a></li>
+                <li><a class="dropdown-item" href="{% url 'download:folder' path=entry.path %}?format=tar.gz" data-download data-format="tar.gz">Download (.tar.gz)</a></li>
+                <li><a class="dropdown-item" href="{% url 'download:folder' path=entry.path %}?format=zip" data-download data-format="zip">Download (.zip)</a></li>
                 <li><button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#uploadModal" data-path="{{ entry.path }}">Upload</button></li>
               {% else %}
-                <li><a class="dropdown-item" href="{% url 'download:file' path=entry.path %}">Download</a></li>
+                <li class="dropdown-submenu">
+                  <a class="dropdown-item" href="{% url 'download:file' path=entry.path %}" data-download data-format="raw">Download (raw)</a>
+                </li>
+                <li><a class="dropdown-item" href="{% url 'download:file' path=entry.path %}?format=tar.gz" data-download data-format="tar.gz">Download (.tar.gz)</a></li>
+                <li><a class="dropdown-item" href="{% url 'download:file' path=entry.path %}?format=zip" data-download data-format="zip">Download (.zip)</a></li>
                 <li><a class="dropdown-item" hx-get="{% url 'browser:preview' path=entry.path %}" hx-target="#preview-pane" hx-swap="innerHTML">Preview</a></li>
               {% endif %}
               <li><button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#shareModal" data-path="{{ entry.path }}">Generate Share Link</button></li>

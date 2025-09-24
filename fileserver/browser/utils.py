@@ -6,6 +6,7 @@ import os
 import queue
 import threading
 from dataclasses import dataclass
+import datetime
 from pathlib import Path, PurePosixPath
 from typing import Iterable, Iterator
 
@@ -142,6 +143,40 @@ def get_breadcrumbs(relative_path: str) -> list[tuple[str, str]]:
     return breadcrumbs
 
 
+def _format_timestamp(ts: float | int | None = None) -> str:
+    """Return a compact timestamp string like 20250131_235959.
+
+    If ts is None, use current time.
+    """
+    dt = datetime.datetime.fromtimestamp(ts) if ts is not None else datetime.datetime.now()
+    return dt.strftime("%Y%m%d_%H%M%S")
+
+
+def _compute_dir_mtime(path: Path) -> float:
+    """Compute the latest modification time for a directory tree.
+
+    Falls back to the directory's own mtime if traversal fails.
+    """
+    latest = path.stat().st_mtime
+    try:
+        for root, _dirs, files in os.walk(path):
+            root_path = Path(root)
+            try:
+                latest = max(latest, root_path.stat().st_mtime)
+            except Exception:
+                pass
+            for fname in files:
+                fpath = root_path / fname
+                try:
+                    latest = max(latest, fpath.stat().st_mtime)
+                except Exception:
+                    continue
+    except Exception:
+        # Ignore traversal errors and use directory's own mtime
+        pass
+    return latest
+
+
 def serve_file(path: Path) -> FileResponse:
     """Return a response that streams the file contents."""
     filename = path.name
@@ -180,7 +215,50 @@ def serve_directory(path: Path, archive_format: str = "tar.gz") -> StreamingHttp
     thread = threading.Thread(target=build_archive, daemon=True)
     thread.start()
 
-    filename = f"{path.name}.{archive_format}" if not path.name.endswith(archive_format) else path.name
+    # Build timestamped filename based on latest modification time in the directory
+    ts = _compute_dir_mtime(path)
+    stamp = _format_timestamp(ts)
+    base = path.name
+    # Ensure proper extension
+    filename = f"{base}-{stamp}.{archive_format}"
+    response = StreamingHttpResponse(writer.__iter__(), content_type=_archive_mime_type(archive_format))
+    response["Content-Disposition"] = f"attachment; filename={filename}"
+    return response
+
+
+def serve_single_file_archive(path: Path, archive_format: str = "tar.gz") -> StreamingHttpResponse:
+    """Stream a compressed archive containing a single file.
+
+    The archive filename includes a timestamp suffix based on the file's last modification time.
+    """
+    if not path.is_file():
+        raise Http404("Not a file.")
+
+    writer = QueueWriter()
+
+    def build_archive() -> None:
+        try:
+            if archive_format == "zip":
+                import zipfile
+
+                with zipfile.ZipFile(writer, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+                    zip_file.write(path, arcname=path.name)
+            else:
+                import tarfile
+
+                mode = "w|gz" if archive_format == "tar.gz" else "w|bz2"
+                with tarfile.open(fileobj=writer, mode=mode) as tar:
+                    tar.add(path, arcname=path.name)
+        finally:
+            writer.close()
+
+    thread = threading.Thread(target=build_archive, daemon=True)
+    thread.start()
+
+    ts = path.stat().st_mtime
+    stamp = _format_timestamp(ts)
+    base = path.stem
+    filename = f"{base}-{stamp}.{archive_format}"
     response = StreamingHttpResponse(writer.__iter__(), content_type=_archive_mime_type(archive_format))
     response["Content-Disposition"] = f"attachment; filename={filename}"
     return response
