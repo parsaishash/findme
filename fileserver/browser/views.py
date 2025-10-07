@@ -18,6 +18,11 @@ from django.views.generic import FormView, TemplateView
 from core.models import CLIToken
 from .forms import UploadForm
 from . import utils
+from .models import DownloadJob, ProxyConfig
+from .tasks import run_download_job
+import threading, subprocess, tempfile, shutil, requests
+from pathlib import Path
+import os
 
 
 class FileBrowserView(LoginRequiredMixin, TemplateView):
@@ -52,6 +57,7 @@ class FileBrowserView(LoginRequiredMixin, TemplateView):
                 "parent_path": "/".join(relative_path.split("/")[:-1]) if relative_path else "",
                 "share_default_expiry": settings.SHARE_LINK_EXPIRY_HOURS,
                 "token_default_expiry": settings.TOKEN_EXPIRY_HOURS,
+                "proxies": list(ProxyConfig.objects.filter(is_active=True)),
             }
         )
         return context
@@ -211,6 +217,44 @@ class HealthCheckView(View):
 
     def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
         return JsonResponse({"status": "ok"})
+
+
+class DownloadJobCreateView(LoginRequiredMixin, View):
+    """Create a background download job (URL/Git/Docker) with optional proxy."""
+
+    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        job_type = request.POST.get("job_type")
+        source = request.POST.get("source", "").strip()
+        target_rel = request.POST.get("target_path", "").strip()
+        proxy_id = request.POST.get("proxy")
+
+        if job_type not in {DownloadJob.TYPE_URL, DownloadJob.TYPE_GIT, DownloadJob.TYPE_DOCKER}:
+            return JsonResponse({"success": False, "error": "Invalid job type"}, status=400)
+
+        if not source:
+            return JsonResponse({"success": False, "error": "Missing source"}, status=400)
+
+        if not utils.user_has_access(request.user, target_rel):
+            return JsonResponse({"success": False, "error": "No access to target"}, status=403)
+
+        proxy = None
+        if proxy_id:
+            try:
+                proxy = ProxyConfig.objects.get(id=proxy_id, is_active=True)
+            except ProxyConfig.DoesNotExist:
+                proxy = None
+
+        job = DownloadJob.objects.create(
+            created_by=request.user,
+            job_type=job_type,
+            source=source,
+            target_path=utils.normalize_path(target_rel),
+            proxy=proxy,
+            status=DownloadJob.STATUS_PENDING,
+        )
+
+        run_download_job.delay(job.id)
+        return JsonResponse({"success": True, "job_id": job.id})
 
 
 class PreviewFileView(LoginRequiredMixin, View):

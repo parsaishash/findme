@@ -313,6 +313,28 @@
       }
     });
 
+    // Download Job modal wiring
+    const jobModal = document.getElementById("jobModal");
+    if (jobModal) {
+      jobModal.addEventListener("show.bs.modal", function (event) {
+        const trigger = event.relatedTarget;
+        const pathField = jobModal.querySelector('input[name="target_path"]');
+        const label = jobModal.querySelector('[data-job-path]');
+        const path = trigger ? (trigger.getAttribute("data-path") || "") : "";
+        if (pathField) pathField.value = path;
+        if (label) label.textContent = path || "/";
+      });
+      const jobForm = jobModal.querySelector('form[data-async-job]');
+      handleAsyncForm(jobForm, function (data) {
+        if (data && data.success) {
+          showToast("Job created: #" + data.job_id);
+          jobModal.querySelector('input[name="source"]').value = "";
+        } else {
+          showToast("Unable to create job");
+        }
+      });
+    }
+
     document.querySelectorAll("[data-copy]").forEach((el) => {
       el.addEventListener("click", function () {
         const value = el.getAttribute("data-copy") || el.textContent;

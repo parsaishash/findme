@@ -91,6 +91,9 @@ def user_has_access(user, relative_path: str) -> bool:
     allowed = get_allowed_paths_for_user(user)
     if not allowed:
         return False
+    # If user has a blanket rule (empty path), grant full access
+    if "" in allowed:
+        return True
     if normalized == "":
         return True
     return any(normalized == rule or normalized.startswith(f"{rule}/") for rule in allowed)
