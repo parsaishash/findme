@@ -49,6 +49,10 @@ class FindMeTestCase(TestCase):
         self.assertTrue(browser_utils.user_has_access(self.user, self.file_path))
         self.assertFalse(browser_utils.user_has_access(self.other_user, self.file_path))
 
+    def test_user_can_access_parent_directory_of_rule(self) -> None:
+        self.assertTrue(browser_utils.user_has_access(self.user, "projects"))
+        self.assertFalse(browser_utils.user_has_access(self.other_user, "projects"))
+
     def test_cli_token_generation_and_validation(self) -> None:
         token = CLIToken.create_for_user(self.user, expiry_hours=1)
         self.assertTrue(token.is_valid())

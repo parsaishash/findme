@@ -96,7 +96,12 @@ def user_has_access(user, relative_path: str) -> bool:
         return True
     if normalized == "":
         return True
-    return any(normalized == rule or normalized.startswith(f"{rule}/") for rule in allowed)
+    return any(
+        normalized == rule
+        or normalized.startswith(f"{rule}/")
+        or rule.startswith(f"{normalized}/")
+        for rule in allowed
+    )
 
 
 def filter_child_entries(user, parent_relative_path: str, entries: Iterable[Path]) -> list[Entry]:
