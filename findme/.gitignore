@@ -13,7 +13,6 @@ Thumbs.db
 # Environments / tooling
 .venv/
 .env
-.env.*
 .python-version
 .ruff_cache/
 .mypy_cache/
