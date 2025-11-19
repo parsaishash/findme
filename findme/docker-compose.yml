@@ -1,0 +1,97 @@
+version: "3.9"
+
+x-findme-env: &findme-env
+  env_file:
+    - .env
+  environment:
+    FILE_SERVER_ROOT: /data
+
+services:
+  web:
+    build:
+      context: .
+    command: gunicorn findme.wsgi:application --bind 0.0.0.0:8000
+    <<: *findme-env
+    depends_on:
+      - redis
+    volumes:
+      - data:/data
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.findme.rule=Host(`${TRAEFIK_HOST:-files.example.com}`)"
+      - "traefik.http.routers.findme.entrypoints=${TRAEFIK_ENTRYPOINTS:-websecure}"
+      - "traefik.http.routers.findme.tls.certresolver=${TRAEFIK_CERTRESOLVER:-le}"
+      - "traefik.http.services.findme.loadbalancer.server.port=8000"
+    networks:
+      - internal
+      - proxy
+
+  worker:
+    build:
+      context: .
+    command: celery -A findme worker -l info
+    <<: *findme-env
+    depends_on:
+      - redis
+    volumes:
+      - data:/data
+    restart: unless-stopped
+    networks:
+      - internal
+
+  beat:
+    build:
+      context: .
+    command: celery -A findme beat -l info
+    <<: *findme-env
+    depends_on:
+      - redis
+    volumes:
+      - data:/data
+    restart: unless-stopped
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    networks:
+      - internal
+
+  traefik:
+    image: traefik:v3.1
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.le.acme.httpchallenge=true"
+      - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.le.acme.email=${TRAEFIK_ACME_EMAIL:-admin@example.com}"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-acme:/letsencrypt
+    networks:
+      - proxy
+    restart: unless-stopped
+    profiles:
+      - traefik
+
+volumes:
+  data:
+  redis-data:
+  traefik-acme:
+
+networks:
+  internal:
+    name: findme_internal
+  proxy:
+    name: findme_proxy

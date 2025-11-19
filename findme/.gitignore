@@ -1,0 +1,47 @@
+# Bytecode / cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Editor / OS cruft
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Environments / tooling
+.venv/
+.env
+.env.*
+.python-version
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.idea/
+.vscode/
+.uv/
+
+# Dependency / build artifacts
+pip-wheel-metadata/
+*.egg-info/
+dist/
+build/
+
+# Application data
+data/
+media/
+staticfiles/
+*.sqlite3
+db.sqlite3
+celerybeat-schedule.db
+
+# Logs / temp files
+*.log
+logs/
+tmp/
+
+# Coverage / test outputs
+.coverage
+cover/
+htmlcov/

@@ -1,0 +1,59 @@
+{% extends "core/base.html" %}
+
+{% block title %}CLI Tokens · FindMe{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card-surface p-3">
+      <h2 class="h6 mb-2 d-flex align-items-center gap-2"><i class="bi bi-key"></i> Generate CLI Token</h2>
+      <p class="text-secondary small">Use tokens to authenticate curl or wget without exposing your password.</p>
+      <form method="post" action="{% url 'core:token-create' %}" data-async-token>
+        {% csrf_token %}
+        <div class="mb-2">
+          <label for="id_token_expiry" class="form-label">Expiry (hours)</label>
+          <input type="number" name="expiry_hours" id="id_token_expiry" class="form-control" min="1" placeholder="{{ token_default_expiry|default:1 }}" />
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Generate</button>
+      </form>
+      <div class="mt-3 d-none" data-token-result>
+        <p class="mb-1">Token</p>
+        <div class="code-block mb-2"><span data-token-value></span></div>
+        <p class="mb-1">curl</p>
+        <div class="code-block mb-2"><span data-token-curl></span></div>
+        <p class="mb-1">wget</p>
+        <div class="code-block"><span data-token-wget></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card-surface p-3 h-100">
+      <h2 class="h6 mb-2 d-flex align-items-center gap-2"><i class="bi bi-shield-lock"></i> Active tokens</h2>
+      {% if tokens %}
+        <div class="list-group">
+          {% for token in tokens %}
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <div class="fw-semibold">{{ token.token }}</div>
+                <div class="text-secondary small">Expires {{ token.expires_at|date:"Y-m-d H:i" }} UTC</div>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                {% if token.is_active %}
+                  <form method="post" action="{% url 'core:token-revoke' token=token.token %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
+                  </form>
+                {% else %}
+                  <span class="badge text-bg-secondary">Revoked</span>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-secondary">No tokens yet. Generate one to see it here.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

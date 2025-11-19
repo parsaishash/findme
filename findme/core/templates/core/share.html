@@ -1,0 +1,52 @@
+{% extends "core/base.html" %}
+
+{% block title %}Shared Item · FindMe{% endblock %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-8">
+    <div class="card-surface p-4">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+          <h1 class="h5 mb-1 d-flex align-items-center gap-2"><i class="bi bi-link-45deg"></i> Shared {{ 'folder' if is_dir else 'file' }}</h1>
+          <p class="text-secondary mb-0">Created by {{ link.user.username }} · Expires {{ link.expires_at|date:"Y-m-d H:i" }} UTC</p>
+        </div>
+        <span class="badge text-bg-light">{{ token }}</span>
+      </div>
+      <div class="d-flex gap-2 mb-3">
+        <a href="{{ download_url }}" class="btn btn-primary">Download{% if is_dir %} (.tar.gz){% endif %}</a>
+        {% if is_dir %}
+          <a href="{{ zip_url }}" class="btn btn-outline-secondary">Download (.zip)</a>
+        {% endif %}
+      </div>
+      {% if is_dir %}
+        <h2 class="h6 text-secondary">Contents</h2>
+        <div class="list-group">
+          {% for item in entries %}
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <div class="d-flex align-items-center gap-2">
+                {% if item.is_dir %}
+                  <i class="bi bi-folder2"></i>
+                {% else %}
+                  <i class="bi bi-file-earmark"></i>
+                {% endif %}
+                <span>{{ item.name }}{% if item.is_dir %}/{% endif %}</span>
+              </div>
+              <div class="d-flex align-items-center gap-3">
+                {% if not item.is_dir %}<span class="text-secondary small">{{ item.size|filesizeformat }}</span>{% endif %}
+                <span class="text-secondary small">{{ item.modified|date:"Y-m-d H:i" }}</span>
+              </div>
+            </div>
+          {% empty %}
+            <div class="file-empty-state">Folder is empty.</div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="code-block">{{ link.path }}</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

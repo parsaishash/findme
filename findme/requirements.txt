@@ -1,0 +1,6 @@
+# Managed with uv — sync via `uv pip sync requirements.txt`
+Django>=5.0,<6.0
+celery>=5.3,<6.0
+redis>=5.0,<6.0
+requests>=2.31,<3.0
+gunicorn>=21.2,<22.0
