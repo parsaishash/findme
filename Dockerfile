@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y \
 RUN pip install --no-cache-dir uv
 
 # Install Python dependencies with uv
-COPY requirements.txt /app/
+COPY findme /app/
 RUN uv pip install --system -r requirements.txt
 
 # Copy project files
