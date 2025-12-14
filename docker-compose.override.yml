@@ -1,0 +1,82 @@
+# Development overrides for docker-compose.yml
+# This file is automatically loaded when running docker-compose commands
+
+version: '3.8'
+
+services:
+  # Override web service for development
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: base  # Use base stage for development (includes dev dependencies)
+    volumes:
+      - .:/app  # Mount source code for hot reloading
+      - /app/data  # Named volume still used for data persistence
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    environment:
+      - DJANGO_ENV=development
+      - DJANGO_DEBUG=1
+      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,127.0.0.1:8000,web
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Override celery worker for development
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: base
+    volumes:
+      - .:/app
+      - /app/data
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    environment:
+      - DJANGO_ENV=development
+      - DJANGO_DEBUG=1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    command: celery -A findme worker -l info --concurrency=2 --loglevel=debug
+
+  # Override celery beat for development
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: base
+    volumes:
+      - .:/app
+      - /app/data
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    environment:
+      - DJANGO_ENV=development
+      - DJANGO_DEBUG=1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    command: celery -A findme beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+  # Use SQLite for development instead of PostgreSQL
+  db:
+    image: postgres:15-alpine
+    profiles: ["postgres"]  # Only start PostgreSQL when explicitly requested
+
+  # Add a development database service (SQLite in a volume)
+  dev_db:
+    image: alpine:latest
+    container_name: findme-dev-db
+    profiles: ["sqlite"]  # Only start when using SQLite
+    volumes:
+      - ./db.sqlite3:/app/db.sqlite3
+    command: sh -c "echo 'SQLite database volume ready' && tail -f /dev/null"
