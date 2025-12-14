@@ -16,7 +16,8 @@ services:
       - DJANGO_ENV=${DJANGO_ENV:-production}
       - DJANGO_DEBUG=${DJANGO_DEBUG:-0}
       - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,web}
-      - DJANGO_ROOT_ENDPOINT=${DJANGO_ROOT_ENDPOINT:-/findme}
+      - DJANGO_ROOT_ENDPOINT=${DJANGO_ROOT_ENDPOINT:-/}
+      - FORCE_SCRIPT_NAME=/findme
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
@@ -52,7 +53,8 @@ services:
       - "traefik.http.routers.findme.service=findme"
       - "traefik.http.services.findme.loadbalancer.server.port=8000"
       - "traefik.http.services.findme.loadbalancer.server.scheme=http"
-      - "traefik.http.routers.findme.middlewares=findme-headers"
+      - "traefik.http.routers.findme.middlewares=findme-stripprefix,findme-headers"
+      - "traefik.http.middlewares.findme-stripprefix.stripprefix.prefixes=/findme"
       - "traefik.http.middlewares.findme-headers.headers.customResponseHeaders.X-Frame-Options=DENY"
       - "traefik.http.middlewares.findme-headers.headers.customResponseHeaders.X-Content-Type-Options=nosniff"
       - "traefik.http.middlewares.findme-headers.headers.customResponseHeaders.Referrer-Policy=strict-origin-when-cross-origin"
