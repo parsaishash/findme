@@ -60,6 +60,30 @@ createsuperuser: ## Create Django superuser
 test: ## Run Django tests
 	docker-compose exec web python manage.py test
 
+# Development tools
+install-dev: ## Install development dependencies
+	pip install -r requirements-dev.txt
+
+pre-commit-install: ## Install pre-commit hooks
+	pre-commit install
+
+pre-commit-run: ## Run pre-commit on all files
+	pre-commit run --all-files
+
+pre-commit-update: ## Update pre-commit hooks to latest versions
+	pre-commit autoupdate
+
+format: ## Format code with black and isort
+	black findme/
+	isort findme/
+
+lint: ## Run linting checks
+	flake8 findme/
+	mypy findme/
+
+safety: ## Check for security vulnerabilities in dependencies
+	safety check
+
 # Cleanup commands
 clean: ## Remove all containers, volumes, and images
 	docker-compose down -v --rmi all

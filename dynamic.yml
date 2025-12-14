@@ -1,0 +1,128 @@
+# Traefik Dynamic Configuration
+# This file contains configuration that can be hot-reloaded
+
+# TLS configuration for HTTPS
+tls:
+  # Default certificate resolver for auto-SSL
+  certificatesResolvers:
+    letsencrypt:
+      acme:
+        # Use staging server for testing (change to https://acme-v02.api.letsencrypt.org/directory for production)
+        caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+        email: admin@example.com
+        storage: /etc/traefik/certs/acme.json
+        # Use TLS-ALPN-01 challenge (works behind NAT/firewalls)
+        tlsChallenge: {}
+
+    # Self-signed certificate resolver for development/local use
+    selfsigned:
+      acme:
+        caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+        email: admin@example.com
+        storage: /etc/traefik/certs/selfsigned.json
+        tlsChallenge: {}
+
+# HTTP routers
+http:
+  # Dashboard router (accessible only on dashboard entrypoint)
+  routers:
+    dashboard:
+      rule: "Host(`traefik.localhost`) || PathPrefix(`/api`)"
+      entryPoints:
+        - dashboard
+      service: api@internal
+      # Basic auth for security (default: admin/admin - CHANGE IN PRODUCTION!)
+      middlewares:
+        - dashboard-auth
+      tls:
+        certResolver: selfsigned
+
+  # Catch-all router for services without explicit configuration
+  catchall:
+    rule: "HostRegexp(`{host:.+}`)"
+    entryPoints:
+      - websecure
+    service: noop@internal
+    middlewares:
+      - https-redirect
+    tls:
+      certResolver: selfsigned
+
+  # Middlewares
+  middlewares:
+    # Dashboard authentication
+    dashboard-auth:
+      basicAuth:
+        users:
+          # Default credentials: admin/admin (CHANGE IN PRODUCTION!)
+          # Generate new hash with: echo $(htpasswd -nb admin yourpassword)
+          - "admin:$2y$10$2vJc8d2YqGgGJLjVzKJ8Pe.3XaX6tQ8K8JvJc8d2YqGgGJLjVzKJ8P"
+
+    # HTTPS redirect for HTTP requests
+    https-redirect:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+    # Rate limiting (optional - uncomment to enable)
+    # rate-limit:
+    #   rateLimit:
+    #     burst: 100
+    #     average: 50
+
+    # CORS headers (optional - uncomment to enable)
+    # cors:
+    #   headers:
+    #     accessControlAllowOriginList:
+    #       - "*"
+    #     accessControlAllowMethods:
+    #       - "GET"
+    #       - "POST"
+    #       - "PUT"
+    #       - "DELETE"
+    #       - "OPTIONS"
+    #     accessControlAllowHeaders:
+    #       - "Content-Type"
+    #       - "Authorization"
+    #     accessControlMaxAge: 86400
+
+    # Security headers (optional - uncomment to enable)
+    # security-headers:
+    #   headers:
+    #     customResponseHeaders:
+    #       X-Frame-Options: "DENY"
+    #       X-Content-Type-Options: "nosniff"
+    #       Referrer-Policy: "strict-origin-when-cross-origin"
+    #       Permissions-Policy: "geolocation=(), microphone=(), camera=()"
+
+# TCP/UDP routers (uncomment if needed for non-HTTP services)
+# tcp:
+#   routers:
+#     # Example: SSH passthrough
+#     ssh:
+#       rule: "HostSNI(`ssh.example.com`)"
+#       entryPoints:
+#         - ssh
+#       service: ssh-service
+#
+# tcp:
+#   services:
+#     ssh-service:
+#       loadBalancer:
+#         servers:
+#           - address: "host.docker.internal:22"
+
+# UDP routers (uncomment if needed)
+# udp:
+#   routers:
+#     # Example: DNS server
+#     dns:
+#       entryPoints:
+#         - dns
+#       service: dns-service
+#
+#   services:
+#     dns-service:
+#       loadBalancer:
+#         servers:
+#           - address: "host.docker.internal:53"
