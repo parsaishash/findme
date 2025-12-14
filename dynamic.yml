@@ -27,7 +27,7 @@ http:
   # Dashboard router (accessible only on dashboard entrypoint)
   routers:
     dashboard:
-      rule: "Host(`traefik.localhost`) || PathPrefix(`/api`)"
+      rule: "Host(`10.100.6.136:8081`) || PathPrefix(`/dash`)"
       entryPoints:
         - dashboard
       service: api@internal
