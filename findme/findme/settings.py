@@ -55,6 +55,10 @@ if not ROOT_ENDPOINT.startswith("/"):
 if not ROOT_ENDPOINT.endswith("/"):
     ROOT_ENDPOINT = ROOT_ENDPOINT + "/"
 
+# FORCE_SCRIPT_NAME is used when the reverse proxy strips the prefix
+# This ensures Django generates URLs with the correct prefix
+FORCE_SCRIPT_NAME = os.environ.get("FORCE_SCRIPT_NAME", ROOT_ENDPOINT.rstrip("/") if ROOT_ENDPOINT != "/" else None)
+
 ALLOWED_HOSTS: list[str] = env_list("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost")
 CSRF_TRUSTED_ORIGINS: list[str] = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
@@ -143,6 +147,9 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
+# Static and media URLs
+# Note: When FORCE_SCRIPT_NAME is set, Django automatically prepends it to URLs
+# So we use relative paths here
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
