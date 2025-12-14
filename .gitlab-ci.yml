@@ -1,0 +1,259 @@
+# GitLab CI/CD Pipeline for FindMe Django Project
+# This pipeline provides automated testing, security scanning, and deployment
+
+stages:
+  - validate
+  - test
+  - build
+  - deploy
+  - cleanup
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+  # Docker image versions
+  PYTHON_VERSION: "3.12"
+  POSTGRES_VERSION: "15"
+  REDIS_VERSION: "7"
+  # Django settings
+  DJANGO_SETTINGS_MODULE: "findme.settings"
+  DJANGO_ENV: "testing"
+
+# Include templates for common CI patterns
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+  - template: Security/Dependency-Scanning.gitlab-ci.yml
+
+# Cache configuration
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .cache/pip
+    - .cache/pre-commit
+    - findme/__pycache__/
+    - findme/**/__pycache__/
+
+# ==================== VALIDATION STAGE ====================
+
+pre-commit:
+  stage: validate
+  image: python:${PYTHON_VERSION}
+  before_script:
+    - pip install pre-commit
+    - pre-commit install --install-hooks
+  script:
+    - pre-commit run --all-files --show-diff-on-failure
+  only:
+    - merge_requests
+    - main
+    - develop
+  artifacts:
+    reports:
+      junit: pre-commit-report.xml
+    expire_in: 1 week
+
+code-quality:
+  stage: validate
+  image: python:${PYTHON_VERSION}
+  before_script:
+    - pip install black isort flake8 mypy types-all
+  script:
+    - echo "Running code quality checks..."
+    - black --check --diff findme/
+    - isort --check-only --diff findme/
+    - flake8 findme/
+    - mypy findme/
+  only:
+    - merge_requests
+    - main
+    - develop
+
+# ==================== TEST STAGE ====================
+
+test:unit:
+  stage: test
+  image: python:${PYTHON_VERSION}
+  services:
+    - postgres:${POSTGRES_VERSION}
+    - redis:${REDIS_VERSION}
+  variables:
+    POSTGRES_DB: findme_test
+    POSTGRES_USER: findme
+    POSTGRES_PASSWORD: test_password
+    DATABASE_URL: postgresql://findme:test_password@postgres/findme_test
+  before_script:
+    - apt-get update && apt-get install -y postgresql-client
+    - pip install -r findme/requirements.txt
+    - pip install pytest pytest-django pytest-cov factory-boy
+    - cd findme
+    - python manage.py wait_for_db
+    - python manage.py migrate
+  script:
+    - python -m pytest --cov=. --cov-report=xml --cov-report=html --junitxml=report.xml
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: findme/coverage.xml
+      junit: findme/report.xml
+    paths:
+      - findme/htmlcov/
+    expire_in: 1 week
+  only:
+    - merge_requests
+    - main
+    - develop
+
+test:integration:
+  stage: test
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+  before_script:
+    - docker info
+    - docker build -t findme:test -f Dockerfile .
+  script:
+    - echo "Running integration tests with Docker..."
+    - docker run --rm -d --name findme-test findme:test
+    - docker exec findme-test python manage.py check
+    - docker exec findme-test python manage.py test --settings=findme.settings --verbosity=2
+    - docker stop findme-test
+  only:
+    - merge_requests
+    - main
+    - develop
+  dependencies: []
+
+# ==================== BUILD STAGE ====================
+
+build:docker:
+  stage: build
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+  script:
+    - docker info
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA -f Dockerfile .
+    - docker build -t $CI_REGISTRY_IMAGE:latest -f Dockerfile .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE:latest
+  only:
+    - main
+    - develop
+    - tags
+
+build:docs:
+  stage: build
+  image: python:${PYTHON_VERSION}
+  before_script:
+    - pip install sphinx sphinx-rtd-theme
+  script:
+    - cd docs && sphinx-build -b html . _build/html
+  artifacts:
+    paths:
+      - docs/_build/html
+    expire_in: 1 week
+  only:
+    - main
+    - develop
+
+# ==================== DEPLOY STAGE ====================
+
+deploy:staging:
+  stage: deploy
+  image: alpine:latest
+  environment:
+    name: staging
+    url: https://staging.findme.example.com
+  before_script:
+    - apk add --no-cache openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H $STAGING_HOST >> ~/.ssh/known_hosts
+  script:
+    - |
+      ssh $STAGING_USER@$STAGING_HOST << EOF
+        cd /opt/findme
+        git pull origin develop
+        docker-compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build
+        docker-compose exec -T web python manage.py migrate
+        docker-compose exec -T web python manage.py collectstatic --noinput
+      EOF
+  only:
+    - develop
+  dependencies:
+    - build:docker
+
+deploy:production:
+  stage: deploy
+  image: alpine:latest
+  environment:
+    name: production
+    url: https://findme.example.com
+  before_script:
+    - apk add --no-cache openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H $PRODUCTION_HOST >> ~/.ssh/known_hosts
+  script:
+    - |
+      ssh $PRODUCTION_USER@$PRODUCTION_HOST << EOF
+        cd /opt/findme
+        git checkout $CI_COMMIT_SHA
+        docker-compose -f docker-compose.yml up -d --build
+        docker-compose exec -T web python manage.py migrate
+        docker-compose exec -T web python manage.py collectstatic --noinput
+        # Health check
+        sleep 30
+        curl -f https://findme.example.com/health/ || exit 1
+      EOF
+  only:
+    - main
+    - tags
+  dependencies:
+    - build:docker
+  when: manual
+
+# ==================== CLEANUP STAGE ====================
+
+cleanup:docker:
+  stage: cleanup
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+  script:
+    - docker system prune -f
+    - docker image prune -f
+  only:
+    - schedules
+
+# ==================== MANUAL JOBS ====================
+
+deploy:rollback:
+  stage: deploy
+  image: alpine:latest
+  script:
+    - echo "Rolling back to previous deployment..."
+    # Add rollback logic here
+  only:
+    - main
+    - develop
+  when: manual

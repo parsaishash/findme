@@ -1,0 +1,86 @@
+# Traefik Static Configuration
+# This file contains static configuration that cannot be hot-reloaded
+
+# Global configuration
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+
+# Entry points (listening ports)
+entryPoints:
+  web:
+    address: ":80"
+    # Redirect HTTP to HTTPS
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+
+  websecure:
+    address: ":443"
+    # Enable HTTP/2 and HTTP/3
+    http2:
+      maxConcurrentStreams: 250
+    http3: {}
+
+  # Dashboard entrypoint on custom port (8081) to avoid conflicts
+  dashboard:
+    address: ":8081"
+
+# API and dashboard
+api:
+  dashboard: true
+  # Only accessible through dashboard entrypoint
+  insecure: false
+
+# Enable providers
+providers:
+  # Docker provider for auto-discovery
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: traefik-net
+    watch: true
+
+  # File provider for dynamic configuration
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
+
+# Logging configuration
+log:
+  level: INFO
+  format: json
+  filePath: /var/log/traefik/traefik.log
+
+# Access logs (for monitoring and debugging)
+accessLog:
+  filePath: /var/log/traefik/access.log
+  format: json
+  bufferingSize: 100
+  filters:
+    statusCodes:
+      - "200-299"
+      - "400-499"
+      - "500-599"
+    retryAttempts: true
+    minDuration: "10ms"
+
+# Metrics (optional - uncomment if you want Prometheus metrics)
+# metrics:
+#   prometheus:
+#     buckets:
+#       - 0.1
+#       - 0.3
+#       - 1.2
+#       - 5.0
+#     addEntryPointsLabels: true
+#     addServicesLabels: true
+
+# Tracing (optional - uncomment for distributed tracing)
+# tracing:
+#   serviceName: traefik
+#   jaeger:
+#     samplingParam: 1.0
+#     localAgentHostPort: jaeger:6831

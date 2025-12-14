@@ -48,6 +48,13 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "unsafe-development-secret-key"
 if not DEBUG and SECRET_KEY == "unsafe-development-secret-key":
     raise ValueError("DJANGO_SECRET_KEY must be set when DEBUG is False.")
 
+# Root endpoint prefix for URL routing (useful when running behind a reverse proxy)
+ROOT_ENDPOINT = os.environ.get("DJANGO_ROOT_ENDPOINT", "/").strip()
+if not ROOT_ENDPOINT.startswith("/"):
+    ROOT_ENDPOINT = "/" + ROOT_ENDPOINT
+if not ROOT_ENDPOINT.endswith("/"):
+    ROOT_ENDPOINT = ROOT_ENDPOINT + "/"
+
 ALLOWED_HOSTS: list[str] = env_list("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost")
 CSRF_TRUSTED_ORIGINS: list[str] = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
