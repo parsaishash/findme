@@ -9,19 +9,19 @@ help: ## Show this help message
 
 # Development commands
 build: ## Build Docker images
-	docker-compose build
+	docker-compose --profile dev build
 
 build-prod: ## Build production Docker images
-	docker-compose -f docker-compose.yml build
+	docker-compose --profile production build
 
 up: ## Start all services in development mode
-	docker-compose up -d
+	docker-compose --profile dev up -d
 
 up-prod: ## Start all services in production mode
-	docker-compose -f docker-compose.yml up -d
+	docker-compose --profile production --profile traefik up -d
 
-up-dev: ## Start services using docker-compose.dev.yml
-	docker-compose -f docker-compose.dev.yml up -d
+up-dev: ## Start services in development mode (alias for up)
+	docker-compose --profile dev up -d
 
 down: ## Stop all services
 	docker-compose down
@@ -33,13 +33,13 @@ logs: ## Show logs from all services
 	docker-compose logs -f
 
 logs-web: ## Show logs from web service
-	docker-compose logs -f web
+	docker-compose logs -f web web-dev
 
 logs-worker: ## Show logs from celery worker
-	docker-compose logs -f celery_worker
+	docker-compose logs -f celery_worker celery_worker-dev
 
-shell: ## Open shell in web container
-	docker-compose exec web bash
+shell: ## Open shell in web container (dev or production)
+	docker-compose exec web-dev bash || docker-compose exec web bash
 
 shell-db: ## Open PostgreSQL shell
 	docker-compose exec db psql -U findme -d findme
@@ -93,10 +93,10 @@ clean-volumes: ## Remove all volumes
 
 # Production deployment helpers
 prod-deploy: ## Deploy to production (build and start)
-	docker-compose -f docker-compose.yml up -d --build
+	docker-compose --profile production --profile traefik up -d --build
 
 prod-logs: ## Show production logs
-	docker-compose -f docker-compose.yml logs -f
+	docker-compose --profile production logs -f
 
 # Database operations
 db-backup: ## Backup PostgreSQL database

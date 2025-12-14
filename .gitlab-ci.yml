@@ -187,7 +187,7 @@ deploy:staging:
       ssh $STAGING_USER@$STAGING_HOST << EOF
         cd /opt/findme
         git pull origin develop
-        docker-compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build
+        docker-compose --profile staging --profile traefik up -d --build
         docker-compose exec -T web python manage.py migrate
         docker-compose exec -T web python manage.py collectstatic --noinput
       EOF
@@ -214,7 +214,7 @@ deploy:production:
       ssh $PRODUCTION_USER@$PRODUCTION_HOST << EOF
         cd /opt/findme
         git checkout $CI_COMMIT_SHA
-        docker-compose -f docker-compose.yml up -d --build
+        docker-compose --profile production --profile traefik up -d --build
         docker-compose exec -T web python manage.py migrate
         docker-compose exec -T web python manage.py collectstatic --noinput
         # Health check

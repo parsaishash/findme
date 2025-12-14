@@ -42,49 +42,89 @@ This document explains how to run the FindMe Django application using Docker and
 
 The application will be available at http://localhost:8000
 
-## Development vs Production
+## Environment Profiles
+
+The `docker-compose.yml` file uses profiles to manage different environments:
 
 ### Development Mode (Default)
-The default `docker-compose.yml` with `docker-compose.override.yml` provides:
-- Hot reloading of code changes
-- Django development server
+```bash
+docker-compose --profile dev up -d
+# or
+make up
+```
+
+This provides:
+- Hot reloading of code changes (source code mounted)
+- Django development server (`runserver`)
 - Volume mounts for source code
 - Debug logging
+- Services: `web-dev`, `celery_worker-dev`, `celery_beat-dev`, `redis`
+- No database (uses SQLite by default)
 
 ### Production Mode
-Use the base `docker-compose.yml` without overrides:
 ```bash
-docker-compose -f docker-compose.yml up -d
+docker-compose --profile production --profile traefik up -d
+# or
+make up-prod
 ```
 
 This provides:
 - Gunicorn WSGI server
 - Optimized Docker images
 - Production logging levels
+- Traefik reverse proxy
+- Services: `web`, `celery_worker`, `celery_beat`, `redis`, `db`, `traefik`
 
-### Simplified Development
-For a simpler development setup, use `docker-compose.dev.yml`:
+### Staging Mode
 ```bash
-docker-compose -f docker-compose.dev.yml up -d
+docker-compose --profile staging --profile traefik up -d
+```
+
+Similar to production but with staging-specific environment variables.
+
+### PostgreSQL Database
+To use PostgreSQL instead of SQLite:
+```bash
+docker-compose --profile dev --profile postgres up -d db
+# or for production
+docker-compose --profile production --profile postgres up -d
 ```
 
 ## Available Services
 
-- **web**: Django application (port 8000)
-- **redis**: Redis cache/message broker
-- **celery_worker**: Background task worker
-- **celery_beat**: Scheduled task scheduler
-- **db**: PostgreSQL database (optional, defaults to SQLite)
+- **web** / **web-dev**: Django application (port 8000)
+- **redis**: Redis cache/message broker (internal only, no exposed ports)
+- **celery_worker** / **celery_worker-dev**: Background task worker (internal only)
+- **celery_beat** / **celery_beat-dev**: Scheduled task scheduler (internal only)
+- **db**: PostgreSQL database (internal only, no exposed ports)
+- **traefik**: Reverse proxy (ports 80, 443, 8081)
+
+## Port Bindings
+
+- **8000:8000** - Django web application (web/web-dev)
+- **80** - HTTP entrypoint (traefik)
+- **443** - HTTPS entrypoint (traefik)
+- **8081** - Traefik dashboard (traefik)
+- **No exposed ports** - redis, db, celery services (internal only)
+
+## Networking
+
+- **default**: Bridge network for internal service communication
+- **traefik-net**: Bridge network for Traefik integration (used by web and traefik services)
 
 ## Useful Commands
 
 ### Using Make (Recommended)
 ```bash
 make help           # Show all available commands
-make build          # Build Docker images
-make up             # Start all services
+make build          # Build Docker images (dev profile)
+make build-prod     # Build production images
+make up             # Start all services (dev profile)
+make up-prod        # Start production services
 make down           # Stop all services
 make logs           # Show logs
+make logs-web       # Show web service logs
+make logs-worker    # Show celery worker logs
 make shell          # Open shell in web container
 make migrate        # Run Django migrations
 make test           # Run tests
@@ -93,14 +133,16 @@ make test           # Run tests
 ### Using Docker Compose Directly
 ```bash
 # Development
-docker-compose build
-docker-compose up -d
-docker-compose logs -f web
-docker-compose exec web python manage.py shell
+docker-compose --profile dev build
+docker-compose --profile dev up -d
+docker-compose --profile dev logs -f web-dev
 
 # Production
-docker-compose -f docker-compose.yml up -d --build
-docker-compose -f docker-compose.yml logs -f
+docker-compose --profile production --profile traefik up -d --build
+docker-compose --profile production logs -f
+
+# Staging
+docker-compose --profile staging --profile traefik up -d --build
 
 # Cleanup
 docker-compose down -v  # Remove volumes too
@@ -115,7 +157,7 @@ No additional configuration needed. Database file is stored in the project root.
 ### PostgreSQL (Production Recommended)
 1. Start PostgreSQL:
    ```bash
-   docker-compose --profile postgres up -d db
+   docker-compose --profile production --profile postgres up -d db
    ```
 
 2. Configure environment variables in `.env`:
@@ -134,8 +176,8 @@ No additional configuration needed. Database file is stored in the project root.
 
 ## File Storage
 
-- **Data directory**: Mounted at `./data` for file uploads
-- **Static files**: Served via Nginx in production (volume: `static_volume`)
+- **Data directory**: Mounted at `./findme/data` for file uploads
+- **Static files**: Served via volume `static_volume`
 - **Media files**: User-uploaded content (volume: `media_volume`)
 
 ## Health Checks
@@ -149,15 +191,15 @@ The application includes health check endpoints:
 ### Common Issues
 
 1. **Port 8000 already in use:**
-   ```bash
-   # Change the port in docker-compose.override.yml
+   Edit `docker-compose.yml` and change the port mapping:
+   ```yaml
    ports:
      - "8001:8000"
    ```
 
 2. **Permission issues with data directory:**
    ```bash
-   sudo chown -R $USER:$USER data/
+   sudo chown -R $USER:$USER findme/data/
    ```
 
 3. **Database connection issues:**
@@ -169,6 +211,12 @@ The application includes health check endpoints:
    make collectstatic
    ```
 
+5. **Traefik network not found:**
+   The `traefik-net` network is created automatically. If you see errors, ensure you're using the `traefik` profile:
+   ```bash
+   docker-compose --profile production --profile traefik up -d
+   ```
+
 ### Logs and Debugging
 
 ```bash
@@ -176,21 +224,22 @@ The application includes health check endpoints:
 docker-compose logs -f
 
 # View specific service logs
-docker-compose logs -f web
-docker-compose logs -f celery_worker
+docker-compose logs -f web-dev
+docker-compose logs -f celery_worker-dev
 
 # Enter container for debugging
-docker-compose exec web bash
-docker-compose exec web python manage.py dbshell
+docker-compose exec web-dev bash
+docker-compose exec web-dev python manage.py dbshell
 ```
 
 ## Environment Variables
 
 Key environment variables (see `.env.example`):
 
-- `DJANGO_ENV`: Environment (development/production)
+- `DJANGO_ENV`: Environment (development/production/staging)
 - `DJANGO_DEBUG`: Enable/disable debug mode
 - `DJANGO_SECRET_KEY`: Django secret key (required)
+- `DJANGO_ALLOWED_HOSTS`: Comma-separated list of allowed hosts
 - `FILE_SERVER_ROOT`: Directory for file storage
 - `CELERY_BROKER_URL`: Redis URL for Celery
 - `POSTGRES_*`: PostgreSQL configuration
@@ -199,11 +248,11 @@ Key environment variables (see `.env.example`):
 
 For production deployment:
 
-1. Use `docker-compose.yml` (without overrides)
-2. Set `DJANGO_DEBUG=0`
+1. Use `--profile production --profile traefik`
+2. Set `DJANGO_DEBUG=0` in `.env`
 3. Configure proper `DJANGO_ALLOWED_HOSTS`
 4. Use environment-specific `.env` files
-5. Set up proper SSL/TLS termination
+5. Set up proper SSL/TLS termination (Traefik handles this)
 6. Configure backup strategies for database and volumes
 
 ## Backup and Restore
