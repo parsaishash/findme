@@ -17,7 +17,7 @@ services:
       #- DJANGO_DEBUG=${DJANGO_DEBUG:-0}
         #- DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,web}
       - DJANGO_ROOT_ENDPOINT=${DJANGO_ROOT_ENDPOINT:-/findme}
-      - FORCE_SCRIPT_NAME=/findme/
+        #- FORCE_SCRIPT_NAME=/findme/
         #- CELERY_BROKER_URL=redis://redis:6379/0
         #- CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
@@ -41,11 +41,12 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik-public"
       - "traefik.http.routers.findme.rule=PathPrefix(`/findme`)"
+      - "traefik.http.routers.findme.middlewares=findme-stripprefix"
+      - "traefik.http.middlewares.findme-stripprefix.stripprefix.prefixes=/findme"
       - "traefik.http.routers.findme.entrypoints=web"
-        #- "traefik.http.routers.findme.service=findme"
       - "traefik.http.services.findme.loadbalancer.server.port=8000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/findme/health/"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health/"]
       interval: 30s
       timeout: 10s
       retries: 3

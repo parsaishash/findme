@@ -40,6 +40,9 @@ RUN python manage.py migrate
 # Collect static files
 RUN python manage.py collectstatic --noinput
 
+# Run migrations
+RUN python manage.py migrate
+
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
