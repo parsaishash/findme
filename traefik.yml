@@ -10,19 +10,9 @@ global:
 entryPoints:
   web:
     address: ":80"
-    # Redirect HTTP to HTTPS
-    http:
-      redirections:
-        entryPoint:
-          to: websecure
-          scheme: https
 
   websecure:
     address: ":443"
-    # Enable HTTP/2 and HTTP/3
-    http2:
-      maxConcurrentStreams: 250
-    http3: {}
 
   # Dashboard entrypoint on custom port (8081) to avoid conflicts
   dashboard:
@@ -32,7 +22,7 @@ entryPoints:
 api:
   dashboard: true
   # Only accessible through dashboard entrypoint
-  insecure: false
+  insecure: true
 
 # Enable providers
 providers:
@@ -40,7 +30,7 @@ providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"
     exposedByDefault: false
-    network: traefik-net
+    #network: traefik-net
     watch: true
 
   # File provider for dynamic configuration
@@ -50,7 +40,7 @@ providers:
 
 # Logging configuration
 log:
-  level: INFO
+  level: DEBUG
   format: json
   filePath: /var/log/traefik/traefik.log
 

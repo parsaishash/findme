@@ -24,29 +24,7 @@ tls:
 
 # HTTP routers
 http:
-  # Dashboard router (accessible only on dashboard entrypoint)
-  routers:
-    dashboard:
-      rule: "Host(`10.100.6.136:8081`) || PathPrefix(`/dash`)"
-      entryPoints:
-        - dashboard
-      service: api@internal
-      # Basic auth for security (default: admin/admin - CHANGE IN PRODUCTION!)
-      middlewares:
-        - dashboard-auth
-      tls:
-        certResolver: selfsigned
 
-  # Catch-all router for services without explicit configuration
-  catchall:
-    rule: "HostRegexp(`{host:.+}`)"
-    entryPoints:
-      - websecure
-    service: noop@internal
-    middlewares:
-      - https-redirect
-    tls:
-      certResolver: selfsigned
 
   # Middlewares
   middlewares:

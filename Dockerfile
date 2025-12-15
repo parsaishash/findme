@@ -13,6 +13,7 @@ WORKDIR /app
 # Optionally install build dependencies (for compilation, if needed)
 RUN apt-get update && apt-get install -y \
     build-essential \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv for dependency management
@@ -35,6 +36,7 @@ USER findme
 ENV FILE_SERVER_ROOT=/data \
     DJANGO_SETTINGS_MODULE=findme.settings
 
+RUN python manage.py migrate
 # Collect static files
 RUN python manage.py collectstatic --noinput
 
