@@ -33,7 +33,7 @@ services:
       - traefik-public
       - default
     ports:
-      - "8000:8000"
+      - 8000
     # Production: gunicorn, Development: runserver
     command: ${WEB_COMMAND:-gunicorn --bind 0.0.0.0:8000 --workers 3 findme.wsgi:application}
     # Traefik labels for reverse proxy configuration (production/staging only)
