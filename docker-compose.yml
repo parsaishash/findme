@@ -58,48 +58,6 @@ services:
       - "traefik.http.middlewares.findme-headers.headers.customResponseHeaders.X-Frame-Options=DENY"
       - "traefik.http.middlewares.findme-headers.headers.customResponseHeaders.X-Content-Type-Options=nosniff"
       - "traefik.http.middlewares.findme-headers.headers.customResponseHeaders.Referrer-Policy=strict-origin-when-cross-origin"
-    profiles:
-      - production
-      - staging
-      - development
-
-  # Development web service (with source code mounting)
-  web-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: base
-    container_name: findme-web-dev
-    restart: unless-stopped
-    env_file:
-      - findme/.env
-    environment:
-      - DJANGO_ENV=development
-      - DJANGO_DEBUG=1
-      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,127.0.0.1:8000,web-dev
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    volumes:
-      - ./findme:/app
-      - ./findme/data:/app/data
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - default
-    ports:
-      - "8000:8000"
-    command: python manage.py runserver 0.0.0.0:8000
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    profiles:
-      - dev
 
   # Redis for Celery backend
   redis:
@@ -117,11 +75,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-    profiles:
-      - production
-      - staging
-      - development
-      - dev
+
 
   # Celery worker for background tasks
   celery_worker:
@@ -153,42 +107,7 @@ services:
       - default
     # No ports exposed - internal service only
     command: celery -A findme worker -l info --concurrency=2
-    profiles:
-      - production
-      - staging
-      - development
 
-  # Development Celery worker (with source code mounting)
-  celery_worker-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: base
-    container_name: findme-celery-worker-dev
-    restart: unless-stopped
-    env_file:
-      - findme/.env
-    environment:
-      - DJANGO_ENV=development
-      - DJANGO_DEBUG=1
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    volumes:
-      - ./findme:/app
-      - ./findme/data:/app/data
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
-    depends_on:
-      redis:
-        condition: service_healthy
-      web-dev:
-        condition: service_started
-    networks:
-      - default
-    # No ports exposed - internal service only
-    command: celery -A findme worker -l info --concurrency=2 --loglevel=debug
-    profiles:
-      - dev
 
   # Celery beat for scheduled tasks
   celery_beat:
@@ -220,42 +139,7 @@ services:
       - default
     # No ports exposed - internal service only
     command: celery -A findme beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    profiles:
-      - production
-      - staging
-      - development
 
-  # Development Celery beat (with source code mounting)
-  celery_beat-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: base
-    container_name: findme-celery-beat-dev
-    restart: unless-stopped
-    env_file:
-      - findme/.env
-    environment:
-      - DJANGO_ENV=development
-      - DJANGO_DEBUG=1
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    volumes:
-      - ./findme:/app
-      - ./findme/data:/app/data
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
-    depends_on:
-      redis:
-        condition: service_healthy
-      web-dev:
-        condition: service_started
-    networks:
-      - default
-    # No ports exposed - internal service only
-    command: celery -A findme beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    profiles:
-      - dev
 
   # PostgreSQL database
   db:
@@ -278,11 +162,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-    profiles:
-      - production
-      - staging
-      - development
-      - postgres
+
 
   # Traefik reverse proxy
   traefik:
@@ -327,10 +207,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    profiles:
-      - production
-      - staging
-      - traefik
+
 
 networks:
   # Default network for internal service communication
