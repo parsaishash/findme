@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 from django.contrib import admin
-from django.urls import include, path, re_path
+from django.urls import include, path
 from django.conf import settings
-
+from django.conf.urls.static import static
 from browser.views import HealthCheckView
 
 
@@ -17,3 +17,6 @@ urlpatterns = [
     path("users/", include("users.urls")),
     path("health/", HealthCheckView.as_view(), name="health"),
 ]
+
+
+print(settings.STATIC_URL)
