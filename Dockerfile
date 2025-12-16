@@ -13,8 +13,10 @@ WORKDIR /app
 # Install build dependencies and PostgreSQL client tools
 RUN apt-get update && apt-get install -y \
     build-essential \
+    git \
     curl \
     postgresql-client \
+    su-exec \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv for dependency management
@@ -34,9 +36,10 @@ RUN chmod +x /docker-entrypoint.sh
 # Create dedicated user and data directory
 RUN addgroup --system findme && adduser --system --ingroup findme --home /app findme \
     && mkdir -p /data \
-    && chown -R findme:findme /data /app
+    && chown -R findme:findme /app
 
-USER findme
+# Note: /data permissions will be fixed by entrypoint script for mounted volumes
+# USER is set in entrypoint script after fixing permissions
 
 ENV FILE_SERVER_ROOT=/data \
     DJANGO_SETTINGS_MODULE=findme.settings

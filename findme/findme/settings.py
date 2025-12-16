@@ -214,7 +214,6 @@ if env_bool("DJANGO_USE_X_FORWARDED_PROTO", default=USE_X_FORWARDED_HOST):
 X_FRAME_OPTIONS = os.environ.get("DJANGO_X_FRAME_OPTIONS", "DENY")
 
 LOG_LEVEL = env_log_level("DJANGO_LOG_LEVEL", "DEBUG" if DEBUG else "INFO")
-LOG_LEVEL = "INFO"
 
 LOGGING = {
     "version": 1,
