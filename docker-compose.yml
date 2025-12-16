@@ -17,7 +17,7 @@ services:
       #- DJANGO_DEBUG=${DJANGO_DEBUG:-0}
         #- DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,web}
       - DJANGO_ROOT_ENDPOINT=${DJANGO_ROOT_ENDPOINT:-/findme}
-        #- FORCE_SCRIPT_NAME=/findme/
+      - FORCE_SCRIPT_NAME=${FORCE_SCRIPT_NAME:-/findme}
         #- CELERY_BROKER_URL=redis://redis:6379/0
         #- CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
