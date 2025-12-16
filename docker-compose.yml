@@ -1,5 +1,4 @@
-version: '3.8'
-
+---
 services:
   # Django web application
   web:
@@ -7,19 +6,20 @@ services:
       context: .
       dockerfile: Dockerfile
       target: base
-    container_name: findme-web
+    container_name: web
     restart: unless-stopped
     env_file:
-      - findme/.env
+      - ./findme/.env
     environment:
+      - TZ=Asia/Tehran
       # Default to production, overridden by profiles
-      - DJANGO_ENV=${DJANGO_ENV:-production}
-      - DJANGO_DEBUG=${DJANGO_DEBUG:-0}
-      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,web}
-      - DJANGO_ROOT_ENDPOINT=${DJANGO_ROOT_ENDPOINT:-/}
-      - FORCE_SCRIPT_NAME=/findme
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      #- DJANGO_ENV=${DJANGO_ENV:-production}
+      #- DJANGO_DEBUG=${DJANGO_DEBUG:-0}
+        #- DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,web}
+      - DJANGO_ROOT_ENDPOINT=${DJANGO_ROOT_ENDPOINT:-/findme}
+        #- FORCE_SCRIPT_NAME=/findme/
+        #- CELERY_BROKER_URL=redis://redis:6379/0
+        #- CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
       - ./findme/data:/app/data
       - static_volume:/app/staticfiles
@@ -30,39 +30,31 @@ services:
       db:
         condition: service_healthy
     networks:
+      - traefik-public
       - default
-      - traefik-net
     ports:
-      - "8000:8000"
+      - 8000
     # Production: gunicorn, Development: runserver
     command: ${WEB_COMMAND:-gunicorn --bind 0.0.0.0:8000 --workers 3 findme.wsgi:application}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
     # Traefik labels for reverse proxy configuration (production/staging only)
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=traefik-net"
+      - "traefik.docker.network=traefik-public"
       - "traefik.http.routers.findme.rule=PathPrefix(`/findme`)"
-      - "traefik.http.routers.findme.entrypoints=websecure"
-      - "traefik.http.routers.findme.tls=true"
-      - "traefik.http.routers.findme.tls.certresolver=selfsigned"
-      - "traefik.http.routers.findme.service=findme"
-      - "traefik.http.services.findme.loadbalancer.server.port=8000"
-      - "traefik.http.services.findme.loadbalancer.server.scheme=http"
-      - "traefik.http.routers.findme.middlewares=findme-stripprefix,findme-headers"
+      - "traefik.http.routers.findme.middlewares=findme-stripprefix"
       - "traefik.http.middlewares.findme-stripprefix.stripprefix.prefixes=/findme"
-      - "traefik.http.middlewares.findme-headers.headers.customResponseHeaders.X-Frame-Options=DENY"
-      - "traefik.http.middlewares.findme-headers.headers.customResponseHeaders.X-Content-Type-Options=nosniff"
-      - "traefik.http.middlewares.findme-headers.headers.customResponseHeaders.Referrer-Policy=strict-origin-when-cross-origin"
+      - "traefik.http.routers.findme.entrypoints=web"
+      - "traefik.http.services.findme.loadbalancer.server.port=8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Redis for Celery backend
   redis:
     image: redis:7-alpine
-    container_name: findme-redis
+    container_name: redis
     restart: unless-stopped
     command: redis-server --appendonly yes
     volumes:
@@ -76,14 +68,13 @@ services:
       timeout: 10s
       retries: 3
 
-
   # Celery worker for background tasks
   celery_worker:
     build:
       context: .
       dockerfile: Dockerfile
       target: base
-    container_name: findme-celery-worker
+    container_name: celery-worker
     restart: unless-stopped
     env_file:
       - findme/.env
@@ -115,7 +106,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: base
-    container_name: findme-celery-beat
+    container_name: celery-beat
     restart: unless-stopped
     env_file:
       - findme/.env
@@ -140,11 +131,10 @@ services:
     # No ports exposed - internal service only
     command: celery -A findme beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
 
-
   # PostgreSQL database
   db:
-    image: postgres:15-alpine
-    container_name: findme-db
+    image: postgres:17-alpine
+    container_name: db
     restart: unless-stopped
     env_file:
       - findme/.env
@@ -163,60 +153,14 @@ services:
       timeout: 10s
       retries: 3
 
-
-  # Traefik reverse proxy
-  traefik:
-    image: traefik:v3.0
-    container_name: traefik
-    restart: unless-stopped
-    ports:
-      # HTTP entrypoint - standard port 80
-      - "80:80"
-      # HTTPS entrypoint - standard port 443
-      - "443:443"
-      # Dashboard entrypoint - custom port to avoid conflicts
-      - "8081:8081"
-    volumes:
-      # Docker socket for auto-discovery
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      # Static configuration
-      - ./traefik.yml:/etc/traefik/traefik.yml:ro
-      # Dynamic configuration
-      - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
-      # SSL certificates storage (persistent)
-      - traefik_certs:/etc/traefik/certs
-      # Log files with rotation
-      - traefik_logs:/var/log/traefik
-    environment:
-      # Enable Docker provider
-      - TRAEFIK_PROVIDERS_DOCKER=true
-      # Watch for Docker events
-      - TRAEFIK_PROVIDERS_DOCKER_WATCH=true
-      # Expose containers by default (can be overridden per service)
-      - TRAEFIK_PROVIDERS_DOCKER_EXPOSED_BY_DEFAULT=false
-      # Network to use for container discovery
-      - TRAEFIK_PROVIDERS_DOCKER_NETWORK=traefik-net
-    networks:
-      - traefik-net
-    labels:
-      # Disable Traefik proxy for Traefik itself
-      - "traefik.enable=false"
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-
-
 networks:
   # Default network for internal service communication
   default:
     driver: bridge
   # Network for Traefik integration
-  traefik-net:
+  traefik-public:
     driver: bridge
-    name: traefik-net
+    external: true
 
 volumes:
   redis_data:
@@ -226,8 +170,4 @@ volumes:
   static_volume:
     driver: local
   media_volume:
-    driver: local
-  traefik_certs:
-    driver: local
-  traefik_logs:
     driver: local
