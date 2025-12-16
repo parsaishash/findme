@@ -10,21 +10,26 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Optionally install build dependencies (for compilation, if needed)
+# Install build dependencies and PostgreSQL client tools
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv for dependency management
 RUN pip install --no-cache-dir uv
 
-# Install Python dependencies with uv
-COPY findme /app/
+# Copy only requirements first, then install dependencies
+COPY findme/requirements.txt /app/requirements.txt
 RUN uv pip install --system -r requirements.txt
 
-# Copy project files
-COPY . /app/
+# Copy the Django application
+COPY findme/ /app/
+
+# Copy and set up entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # Create dedicated user and data directory
 RUN addgroup --system findme && adduser --system --ingroup findme --home /app findme \
@@ -36,16 +41,10 @@ USER findme
 ENV FILE_SERVER_ROOT=/data \
     DJANGO_SETTINGS_MODULE=findme.settings
 
-RUN python manage.py migrate
-# Collect static files
-RUN python manage.py collectstatic --noinput
-
-# Run migrations
-RUN python manage.py migrate
-
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health/ || exit 1
 
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["gunicorn", "findme.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
