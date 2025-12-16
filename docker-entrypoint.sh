@@ -13,7 +13,7 @@ if [ "$(id -u)" = "0" ]; then
     
     # Switch to findme user and re-execute this script
     echo "Switching to findme user..."
-    exec su-exec findme /bin/bash "$0" "$@"
+    exec gosu findme /bin/bash "$0" "$@"
 fi
 
 # Wait for PostgreSQL to be ready
