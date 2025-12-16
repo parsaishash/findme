@@ -150,11 +150,11 @@ USE_TZ = True
 # Static and media URLs
 # Note: When FORCE_SCRIPT_NAME is set, Django automatically prepends it to URLs
 # So we use relative paths here
-STATIC_URL = "/static/"
+STATIC_URL = f"{ROOT_ENDPOINT}static/" if FORCE_SCRIPT_NAME else "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
-MEDIA_URL = "/media/"
+MEDIA_URL = f"{ROOT_ENDPOINT}media/" if FORCE_SCRIPT_NAME else "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 LOGIN_URL = "core:login"
